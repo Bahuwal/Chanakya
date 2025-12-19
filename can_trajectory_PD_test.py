@@ -41,7 +41,14 @@ def main():
     # Set max torque (placeholder - handled internally by motors)
     motor.set_max_torque(np.ones(10) * 1000) #1000 milliamps (mA)
     
-    # kp/kd gains are loaded from can_config.yaml
+    # Print control parameters for safety verification
+    print(f"\n⚠️  Control Parameters (from config):")
+    print(f"    kp  = {motor.kp[0]:.2f}")
+    print(f"    kd  = {motor.kd[0]:.2f}")
+    print(f"    ikp = {motor._ikp[0]:.2f}")
+    print(f"    vel = {motor._vel[0]:.2f}")
+    print(f"\n    Starting in 2 seconds... (Ctrl+C to abort)\n")
+    time.sleep(2)
     
     time.sleep(0.1)
     

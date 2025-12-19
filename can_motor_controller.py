@@ -699,6 +699,15 @@ if __name__ == "__main__":
     # Start control
     motor.run()
     
+    # Print control parameters for safety verification
+    print(f"\n⚠️  Control Parameters (from config):")
+    print(f"    kp  = {motor.kp[0]:.2f}")
+    print(f"    kd  = {motor.kd[0]:.2f}")
+    print(f"    ikp = {motor._ikp[0]:.2f}")
+    print(f"    vel = {motor._vel[0]:.2f}")
+    print(f"\n    Starting in 2 seconds... (Ctrl+C to abort)\n")
+    time.sleep(2)
+    
     # Enable position control
     motor.target_dof_position = np.zeros(10)
     motor.use_position_pd = True
