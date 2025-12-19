@@ -413,9 +413,9 @@ class CANMotorController:
         self.IKI_MAX = config.get("IKI_MAX", 50.0)
         
         # Default gains
-        self.default_kp = config.get("default_kp", 60.0)
-        self.default_kd = config.get("default_kd", 5.0)
-        self.default_ikp = config.get("default_ikp", 30.0)
+        self.default_kp = config.get("default_kp", 20) #60.0
+        self.default_kd = config.get("default_kd", 0.8) #5.0
+        self.default_ikp = config.get("default_ikp", 50) #30.0
         self.default_ikd = config.get("default_ikd", 0.01)
         self.default_iki = config.get("default_iki", 0.0)
         self.default_vel = config.get("default_vel", 2.0)
