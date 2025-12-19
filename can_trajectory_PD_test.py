@@ -42,7 +42,7 @@ def main():
     motor.set_max_torque(np.ones(10) * 1000) #1000 milliamps (mA)
     
     # Print control parameters for safety verification
-    print(f"\n⚠️  Control Parameters (from config):")
+    print(f"\n  Control Parameters (from config):")
     print(f"    kp  = {motor.kp[0]:.2f}")
     print(f"    kd  = {motor.kd[0]:.2f}")
     print(f"    ikp = {motor._ikp[0]:.2f}")
@@ -87,6 +87,7 @@ def main():
                     
                     if "dof_pos_target" in receiver.data:
                         dof_pos_target = np.array(receiver.data["dof_pos_target"])
+                        print(f"[CMD] Target position: {dof_pos_target}")
                         
                     if "action_is_on" in receiver.data:
                         action_is_on = np.array(receiver.data["action_is_on"], dtype=np.float64)
