@@ -528,22 +528,26 @@ class CANMotorController:
         for motor in self._motors:
             self._ctrl.motor_mode(motor)
         
-        # Start control thread
+        # If param_port is configured, read parameters ONCE at startup
+        # This is required to "wake up" Motorevo motors
+        if self._use_separate_param_port and self._param_ctrl:
+            print(f"Reading motor parameters from {self._param_port_path}...")
+            for _ in range(20):  # Poll for ~100ms to read initial parameters
+                try:
+                    self._param_ctrl.poll()
+                except Exception:
+                    pass
+                sleep(0.005)
+            print("✓ Motor parameters read - motors initialized")
+        
+        # Start control thread (sends commands via motor_port)
         self._control_thread = threading.Thread(target=self._control_loop, daemon=True)
         self._control_thread.start()
         
-        # Start polling thread(s)
-        if self._use_separate_param_port and self._param_ctrl:
-            # Separate param port for reading feedback
-            self._param_poll_thread = threading.Thread(
-                target=self._param_poll_loop, daemon=True
-            )
-            self._param_poll_thread.start()
-            print(f"✓ Parameter polling thread started on {self._param_port_path}")
-        else:
-            # Feedback on same port as commands
-            self._poll_thread = threading.Thread(target=self._poll_loop, daemon=True)
-            self._poll_thread.start()
+        # Start polling thread - ALWAYS poll feedback from motor_port (USB0)
+        # Motor feedback (pos, vel, torque) comes from motor_port during operation
+        self._poll_thread = threading.Thread(target=self._poll_loop, daemon=True)
+        self._poll_thread.start()
         
         sleep(0.1)
         print("Motor control started")
@@ -700,7 +704,7 @@ if __name__ == "__main__":
     motor.run()
     
     # Print control parameters for safety verification
-    print(f"\n⚠️  Control Parameters (from config):")
+    print(f"\n  Control Parameters (from config):")
     print(f"    kp  = {motor.kp[0]:.2f}")
     print(f"    kd  = {motor.kd[0]:.2f}")
     print(f"    ikp = {motor._ikp[0]:.2f}")
