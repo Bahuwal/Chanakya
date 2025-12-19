@@ -704,9 +704,7 @@ if __name__ == "__main__":
     # Start control
     motor.run()
     
-    # Set target positions
-    motor.kp = np.ones(10) * 60
-    motor.kd = np.ones(10) * 5
+    # Enable position control
     motor.target_dof_position = np.zeros(10)
     motor.use_position_pd = True
     
