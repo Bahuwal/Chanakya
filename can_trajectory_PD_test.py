@@ -41,9 +41,7 @@ def main():
     # Set max torque (placeholder - handled internally by motors)
     motor.set_max_torque(np.ones(10) * 1000) #1000 milliamps (mA)
     
-    # Set default PD gains
-    motor.kp = np.ones(10) * 60
-    motor.kd = np.ones(10) * 5
+    # kp/kd gains are loaded from can_config.yaml
     
     time.sleep(0.1)
     
