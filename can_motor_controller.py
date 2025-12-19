@@ -5,12 +5,7 @@ Usage:
     from can_motor_controller import CANMotorController
     motor = CANMotorController(serial_port="/dev/ttyUSB0")
     motor.run()
-    
-    # Set target positions (radians)
-    motor.target_dof_position = np.array([0.1, 0.0, ...])  # 10 joints
-    motor.kp = np.ones(10) * 60
-    motor.kd = np.ones(10) * 5
-    motor.use_position_pd = True
+
 """
 
 from time import sleep
