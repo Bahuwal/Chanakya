@@ -64,6 +64,10 @@ def main():
     
     # Setup UDP publisher for telemetry
     data_publisher = DataPublisher()
+    print(f"\n📊 Telemetry Publisher configured:")
+    print(f"   Target: udp://localhost:9870")
+    print(f"   Encoding: MessagePack")
+    print(f"   PlotJuggler should listen on UDP port 9870 with MessagePack protocol\n")
     
     # Setup UDP receiver for commands
     receiver = DataReceiver(port=9871, decoding="msgpack", broadcast=True)
@@ -74,6 +78,7 @@ def main():
     
     action_is_on = np.ones(10)
     should_publish = False
+    publish_count = 0
     
     print("Starting control loop... Waiting for commands on UDP:9871")
     print("Press Ctrl+C to stop\n")
@@ -126,6 +131,7 @@ def main():
                 # Publish telemetry
                 data_publisher.enable = True
                 data_publisher.publish({"real": data})
+                publish_count += 1
                 
                 # Maintain timing
                 elapsed = time.time() - t
@@ -135,7 +141,7 @@ def main():
             
             # Print status every second
             if i % 200 == 0:
-                print(f"[{time.time()-startTime:.1f}s] pos: {motor.dof_pos}")
+                print(f"[{time.time()-startTime:.1f}s] pos: {motor.dof_pos} | Published: {publish_count} packets")
                 
     except KeyboardInterrupt:
         print("\n[Interrupted]")
