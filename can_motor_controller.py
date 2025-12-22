@@ -581,44 +581,48 @@ class CANMotorController:
         print("Motor control stopped")
     
     def _control_loop(self):
-        """Background thread for sending control commands."""
+        """Background thread for sending control commands.
+        
+        CRITICAL: Motorevo servos require continuous command stream to maintain position!
+        If commands stop, motors idle and internal gears may oscillate then stop.
+        """
         while not self._stop_event.is_set():
-            if self._use_position_pd:
-                # Apply ankle coupling if enabled
-                target_motor_pos = self._target_dof_position.copy()
-                if self.ankle_coupling:
-                    target_motor_pos[4] += target_motor_pos[3]  # Left ankle
-                    target_motor_pos[9] += target_motor_pos[8]  # Right ankle
-                
-                # Add position offset
-                target_motor_pos = target_motor_pos + self._motor_pos_offset
-                
-                # Send commands to each motor
-                for i, motor in enumerate(self._motors):
-                    if self._torque_multiplier[i] > 0.5:  # Action is on
-                        self._ctrl.servo_control(
-                            motor,
-                            pos=target_motor_pos[i],
-                            vel=self._vel[i],
-                            kp=self._kp[i],
-                            kd=self._kd[i],
-                            ikp=self._ikp[i],
-                            ikd=self._ikd[i],
-                            iki=self._iki[i]
-                        )
-                    else:
-                        # Motor disabled, send zero torque
-                        self._ctrl.servo_control(
-                            motor,
-                            pos=motor.pos,  # Hold current position
-                            vel=0,
-                            kp=0,
-                            kd=0,
-                            ikp=0,
-                            ikd=0,
-                            iki=0
-                        )
-                    sleep(0.001)  # Small delay between motors
+            # Apply ankle coupling if enabled
+            target_motor_pos = self._target_dof_position.copy()
+            if self.ankle_coupling:
+                target_motor_pos[4] += target_motor_pos[3]  # Left ankle
+                target_motor_pos[9] += target_motor_pos[8]  # Right ankle
+            
+            # Add position offset
+            target_motor_pos = target_motor_pos + self._motor_pos_offset
+            
+            # Send commands to ALL motors CONTINUOUSLY (matches working code behavior)
+            for i, motor in enumerate(self._motors):
+                if self._use_position_pd and self._torque_multiplier[i] > 0.5:
+                    # Active position control
+                    self._ctrl.servo_control(
+                        motor,
+                        pos=target_motor_pos[i],
+                        vel=self._vel[i],
+                        kp=self._kp[i],
+                        kd=self._kd[i],
+                        ikp=self._ikp[i],
+                        ikd=self._ikd[i],
+                        iki=self._iki[i]
+                    )
+                else:
+                    # Motor disabled or not in PD mode - send zero gains to maintain engagement
+                    self._ctrl.servo_control(
+                        motor,
+                        pos=motor.pos,  # Hold current position
+                        vel=0,
+                        kp=0,
+                        kd=0,
+                        ikp=0,
+                        ikd=0,
+                        iki=0
+                    )
+                sleep(0.001)  # Small delay between motors (matches working code)
             
             sleep(self.control_dt)
     
