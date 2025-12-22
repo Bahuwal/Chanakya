@@ -46,7 +46,7 @@ IKI_MAX: 50.0
 
 # Default control gains
 default_kp: 20 #60.0
-default_kd: 0.8 #5.0 
+default_kd: 5.0 
 default_ikp: 50 #30.0
 default_ikd: 0.01
 default_iki: 0.0

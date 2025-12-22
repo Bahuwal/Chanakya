@@ -31,10 +31,10 @@ Control your motors using keyboard commands while visualizing telemetry in PlotJ
 
 ```bash
 # Linux (with real-time priority)
-sudo chrt -f 99 $(which python) -u can_trajectory_PD_test.py
+sudo chrt -f 99 python3 -u can_trajectory_PD_test.py
 
 # Or without real-time priority
-python can_trajectory_PD_test.py
+python3 can_trajectory_PD_test.py
 ```
 
 ### Step 2: Start the Keyboard Controller
@@ -42,7 +42,7 @@ python can_trajectory_PD_test.py
 In a **separate terminal**:
 
 ```bash
-sudo chrt -f 99 $(which python) -u sshkeyboard_pd_test.py
+sudo chrt -f 99 python3 -u sshkeyboard_pd_test.py
 ```
 
 ### Step 3: Visualize in PlotJuggler
