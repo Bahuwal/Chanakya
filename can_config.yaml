@@ -51,8 +51,12 @@ default_ikp: 50 #30.0
 default_ikd: 0.01
 default_iki: 0.0
 
-# Velocity for trajectory tracking
-default_vel: 2.0
+# Velocity for trajectory tracking (0.0 for position holding, non-zero for trajectory tracking)
+default_vel: 0.0
+
+# Default feed-forward torque per joint (for PTM mode)
+# Set non-zero values for joints requiring gravity compensation
+default_torque: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 # Zero position offset (calibrated at startup)
 # These values are updated by initialize_motor_pos_offset()

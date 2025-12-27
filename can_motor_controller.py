@@ -169,6 +169,47 @@ class LowLevelCANController:
 
         self._send_data(motor.id, data_buff)
 
+    def ptm_control(self, motor: Motor, pos, vel, kp, kd, torque):
+        """
+        PTM (Position-Torque Mix) mode control.
+        
+        Control Formula: T_total = Kp×(P_ref - P_actual) + Kd×(V_ref - V_actual) + T_ref
+        
+        Args:
+            motor: Motor object
+            pos: Target position (radians), -12.5 to +12.5
+            vel: Target velocity (rad/s), -10.0 to +10.0
+            kp: Position proportional gain, 0.0 to 250.0
+            kd: Position derivative gain, 0.0 to 50.0
+            torque: Feed-forward torque (Nm), -50.0 to +50.0
+            
+        Byte Structure:
+            Byte 0-1: Position (16-bit)
+            Byte 2, 3[7:4]: Velocity (12-bit)
+            Byte 3[3:0], 4: Kp (12-bit)
+            Byte 5, 6[7:4]: Kd (12-bit)
+            Byte 6[3:0], 7: Torque (12-bit)
+        """
+        pos_uint = float_to_uint(pos, motor.Q_MIN, motor.Q_MAX, 16)      # 16-bit
+        vel_uint = float_to_uint(vel, motor.DQ_MIN, motor.DQ_MAX, 12)    # 12-bit
+        kp_uint = float_to_uint(kp, motor.OKP_MIN, motor.OKP_MAX, 12)    # 12-bit
+        kd_uint = float_to_uint(kd, motor.OKD_MIN, motor.OKD_MAX, 12)    # 12-bit
+        tau_uint = float_to_uint(torque, motor.TAU_MIN, motor.TAU_MAX, 12)  # 12-bit
+
+        # Pack bytes according to PTM specification
+        data_buff = bytes([
+            (pos_uint >> 8) & 0xFF,                          # Byte 0: Position high byte
+            pos_uint & 0xFF,                                 # Byte 1: Position low byte
+            (vel_uint >> 4) & 0xFF,                          # Byte 2: Velocity high 8 bits
+            ((vel_uint & 0x0F) << 4) | ((kp_uint >> 8) & 0x0F),  # Byte 3: Vel[3:0] | Kp[11:8]
+            kp_uint & 0xFF,                                  # Byte 4: Kp low 8 bits
+            (kd_uint >> 4) & 0xFF,                           # Byte 5: Kd high 8 bits
+            ((kd_uint & 0x0F) << 4) | ((tau_uint >> 8) & 0x0F),  # Byte 6: Kd[3:0] | Tau[11:8]
+            tau_uint & 0xFF                                  # Byte 7: Torque low 8 bits
+        ])
+
+        self._send_data(motor.id, data_buff)
+
     def _control_cmd(self, motor, cmd):
         if isinstance(motor, Motor):
             motor_id = int(motor.id)
@@ -247,7 +288,7 @@ class CANMotorController:
     """
     
     def __init__(self, serial_port="/dev/ttyUSB0", baudrate=921600, config_path="can_config.yaml",
-                 param_port=None):
+                 param_port=None, control_mode="servo"):
         """
         Initialize CAN Motor Controller.
         
@@ -258,6 +299,7 @@ class CANMotorController:
             param_port: Optional separate port for reading motor parameters.
                        If None, uses value from config. If config has None/empty,
                        feedback is read from serial_port.
+            control_mode: Control mode - "servo" or "ptm" (default: "servo")
         """
         self.num_dof = 10
         self.running = False
@@ -328,6 +370,7 @@ class CANMotorController:
                 self._param_ctrl.add_motor(motor)
         
         # Control state
+        self._control_mode = control_mode  # "servo" or "ptm"
         self._target_dof_position = np.zeros(self.num_dof)
         self._kp = np.ones(self.num_dof) * self.default_kp
         self._kd = np.ones(self.num_dof) * self.default_kd
@@ -335,7 +378,8 @@ class CANMotorController:
         self._ikd = np.ones(self.num_dof) * self.default_ikd
         self._iki = np.ones(self.num_dof) * self.default_iki
         self._vel = np.ones(self.num_dof) * self.default_vel
-        self._use_position_pd = False
+        self._target_torque = np.array(self.default_torque)  # For PTM mode
+        self._use_position_pd = True  # Enable by default to prevent random initial positions
         self._torque_multiplier = np.ones(self.num_dof)
         
         # Position offset (for zero calibration)
@@ -414,6 +458,7 @@ class CANMotorController:
         self.default_ikd = config.get("default_ikd", 0.01)
         self.default_iki = config.get("default_iki", 0.0)
         self.default_vel = config.get("default_vel", 2.0)
+        self.default_torque = config.get("default_torque", [0.0]*10)  # For PTM mode
         
         # Position offset
         self.motor_pos_offset = config.get("motor_pos_offset", [0.0]*10)
@@ -498,6 +543,26 @@ class CANMotorController:
     @torque_multiplier.setter
     def torque_multiplier(self, value):
         self._torque_multiplier = np.array(value)
+    
+    @property
+    def control_mode(self) -> str:
+        """Current control mode: 'servo' or 'ptm'."""
+        return self._control_mode
+    
+    @control_mode.setter
+    def control_mode(self, value: str):
+        if value not in ["servo", "ptm"]:
+            raise ValueError("control_mode must be 'servo' or 'ptm'")
+        self._control_mode = value
+    
+    @property
+    def target_torque(self) -> np.ndarray:
+        """Target feed-forward torques for PTM mode."""
+        return self._target_torque
+    
+    @target_torque.setter
+    def target_torque(self, value):
+        self._target_torque = np.array(value)
     
     @property
     def target_dof_torque_Nm(self) -> np.ndarray:
@@ -599,29 +664,52 @@ class CANMotorController:
             # Send commands to ALL motors CONTINUOUSLY (matches working code behavior)
             for i, motor in enumerate(self._motors):
                 if self._use_position_pd and self._torque_multiplier[i] > 0.5:
-                    # Active position control
-                    self._ctrl.servo_control(
-                        motor,
-                        pos=target_motor_pos[i],
-                        vel=self._vel[i],
-                        kp=self._kp[i],
-                        kd=self._kd[i],
-                        ikp=self._ikp[i],
-                        ikd=self._ikd[i],
-                        iki=self._iki[i]
-                    )
+                    # Active position control - use selected control mode
+                    if self._control_mode == "servo":
+                        # Servo mode: inner-loop PID
+                        self._ctrl.servo_control(
+                            motor,
+                            pos=target_motor_pos[i],
+                            vel=self._vel[i],
+                            kp=self._kp[i],
+                            kd=self._kd[i],
+                            ikp=self._ikp[i],
+                            ikd=self._ikd[i],
+                            iki=self._iki[i]
+                        )
+                    elif self._control_mode == "ptm":
+                        # PTM mode: feed-forward torque
+                        self._ctrl.ptm_control(
+                            motor,
+                            pos=target_motor_pos[i],
+                            vel=self._vel[i],
+                            kp=self._kp[i],
+                            kd=self._kd[i],
+                            torque=self._target_torque[i]
+                        )
                 else:
-                    # Motor disabled or not in PD mode - send zero gains to maintain engagement
-                    self._ctrl.servo_control(
-                        motor,
-                        pos=motor.pos,  # Hold current position
-                        vel=0,
-                        kp=0,
-                        kd=0,
-                        ikp=0,
-                        ikd=0,
-                        iki=0
-                    )
+                    # Motor disabled or not in PD mode - send target position with zero gains
+                    # This prevents motors from holding random initial positions
+                    if self._control_mode == "servo":
+                        self._ctrl.servo_control(
+                            motor,
+                            pos=target_motor_pos[i],  # Use target position, not current
+                            vel=0,
+                            kp=0,
+                            kd=0,
+                            ikp=0,
+                            ikd=0,
+                            iki=0
+                        )
+                    elif self._control_mode == "ptm":
+                        self._ctrl.ptm_control(
+                            motor,
+                            pos=target_motor_pos[i],  # Use target position, not current
+                            vel=0,
+                            kp=0,
+                            kd=0,
+                            torque=0
+                        )
                 sleep(0.001)  # Small delay between motors (matches working code)
             
             sleep(self.control_dt)
