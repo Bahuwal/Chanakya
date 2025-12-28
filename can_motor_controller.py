@@ -209,6 +209,7 @@ class LowLevelCANController:
         ])
 
         self._send_data(motor.id, data_buff)
+        self.poll()  # Read feedback immediately after command (like working code does)
 
     def _control_cmd(self, motor, cmd):
         if isinstance(motor, Motor):
