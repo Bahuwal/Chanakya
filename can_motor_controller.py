@@ -379,7 +379,7 @@ class CANMotorController:
         self._iki = np.ones(self.num_dof) * self.default_iki
         self._vel = np.ones(self.num_dof) * self.default_vel
         self._target_torque = np.array(self.default_torque)  # For PTM mode
-        self._use_position_pd = True  # Enable by default to prevent random initial positions
+        self._use_position_pd = False  # Will be enabled in main loop
         self._torque_multiplier = np.ones(self.num_dof)
         
         # Position offset (for zero calibration)
