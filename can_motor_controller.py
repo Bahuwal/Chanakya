@@ -168,7 +168,8 @@ class LowLevelCANController:
         ])
 
         self._send_data(motor.id, data_buff)
-        self.poll()  # Read feedback immediately
+        self._recv_data(motor.id)  # Receive for this specific motor
+        self.poll()  # Then poll all motors
         sleep(0.001)  # Small delay like working code
 
     def ptm_control(self, motor: Motor, pos, vel, kp, kd, torque):
@@ -211,7 +212,8 @@ class LowLevelCANController:
         ])
 
         self._send_data(motor.id, data_buff)
-        self.poll()  # Read feedback immediately
+        self._recv_data(motor.id)  # Receive for this specific motor
+        self.poll()  # Then poll all motors  
         sleep(0.001)  # Small delay like working code
 
     def _control_cmd(self, motor, cmd):
@@ -235,6 +237,22 @@ class LowLevelCANController:
             self.serial_device.write(self.tx_buffer)
         except Exception as e:
             print(f"[_send_data] write error: {e}")
+    
+    def _recv_data(self, motor_id):
+        """Receive and process data for a specific motor (like working code)."""
+        data_recv = b''.join([self.rx_buffer, self.serial_device.read_all()])
+        frame_length = 12
+        i = 0
+        
+        while i <= len(data_recv) - frame_length:
+            frame = data_recv[i:i+frame_length]
+            frame_can_id = frame[8] | (frame[9] << 8) | (frame[10] << 16) | (frame[11] << 24)
+            
+            if frame_can_id == motor_id:
+                self._process_packet(frame[0:8], frame_can_id)
+                i += frame_length
+            else:
+                i += 1
 
     def poll(self):
         """Read and process feedback from all motors."""
