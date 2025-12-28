@@ -168,7 +168,8 @@ class LowLevelCANController:
         ])
 
         self._send_data(motor.id, data_buff)
-        self.poll()  # Read feedback immediately after command
+        self.poll()  # Read feedback immediately
+        sleep(0.001)  # Small delay like working code
 
     def ptm_control(self, motor: Motor, pos, vel, kp, kd, torque):
         """
@@ -210,7 +211,8 @@ class LowLevelCANController:
         ])
 
         self._send_data(motor.id, data_buff)
-        self.poll()  # Read feedback immediately after command
+        self.poll()  # Read feedback immediately
+        sleep(0.001)  # Small delay like working code
 
     def _control_cmd(self, motor, cmd):
         if isinstance(motor, Motor):
