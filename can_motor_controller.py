@@ -623,11 +623,21 @@ class CANMotorController:
                 sleep(0.005)
             print("✓ Motor parameters read - motors initialized")
         
+        # Do one final poll to ensure we have the latest motor positions
+        # This prevents race conditions, especially for motor 0 when param port is connected to it
+        if self._use_separate_param_port and self._param_ctrl:
+            for _ in range(5):  # Extra 25ms of polling
+                try:
+                    self._param_ctrl.poll()
+                except Exception:
+                    pass
+                sleep(0.005)
+        
         # Set current motor positions as reference zero to prevent jump starts
         # motor_pos_offset makes the current physical position act as "zero" for control
         for i, motor in enumerate(self._motors):
             self._motor_pos_offset[i] = motor.pos
-        print(f"✓ Current motor positions set as reference zero")
+        print(f"✓ Current motor positions set as reference zero: {[f'{p:.2f}' for p in self._motor_pos_offset]}")
         
         # Start control thread (sends commands via motor_port)
         self._control_thread = threading.Thread(target=self._control_loop, daemon=True)
