@@ -627,14 +627,23 @@ class CANMotorController:
                 sleep(0.005)
             print("✓ Motor parameters read - motors initialized")
         
+        # Start polling thread logic FIRST to get initial positions
+        self._poll_thread = threading.Thread(target=self._poll_loop, daemon=True)
+        self._poll_thread.start()
+        
+        # Wait briefly for feedback to populate
+        print("Waiting for initial motor feedback...")
+        sleep(0.2) 
+        
+        # Sync target position to current position to prevent startup jumps
+        # User command (target_dof) = Current Pos - Offset
+        current_positions = np.array([m.pos for m in self._motors])
+        self._target_dof_position = current_positions - self._motor_pos_offset
+        print(f"✓ Initial positions synced: {current_positions}")
+
         # Start control thread (sends commands via motor_port)
         self._control_thread = threading.Thread(target=self._control_loop, daemon=True)
         self._control_thread.start()
-        
-        # Start polling thread - ALWAYS poll feedback from motor_port (USB0)
-        # Motor feedback (pos, vel, torque) comes from motor_port during operation
-        self._poll_thread = threading.Thread(target=self._poll_loop, daemon=True)
-        self._poll_thread.start()
         
         sleep(0.1)
         print("Motor control started")
