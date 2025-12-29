@@ -45,11 +45,11 @@ IKI_MIN: 0.0
 IKI_MAX: 50.0
 
 # Default control gains
-default_kp: 20 #60.0
-default_kd: 5.0 
-default_ikp: 50 #30.0
-default_ikd: 0.01
-default_iki: 0.0
+default_kp: [20, 20, 20, 20, 20, 20, 20, 20, 20, 20] #60.0
+default_kd: [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]
+default_ikp: [50, 50, 50, 50, 50, 50, 50, 50, 50, 50] #30.0
+default_ikd: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+default_iki: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 # Velocity for trajectory tracking (0.0 for position holding, non-zero for trajectory tracking)
 default_vel: 0.0

@@ -394,11 +394,11 @@ class CANMotorController:
         # Control state
         self._control_mode = control_mode  # "servo" or "ptm"
         self._target_dof_position = np.zeros(self.num_dof)
-        self._kp = np.ones(self.num_dof) * self.default_kp
-        self._kd = np.ones(self.num_dof) * self.default_kd
-        self._ikp = np.ones(self.num_dof) * self.default_ikp
-        self._ikd = np.ones(self.num_dof) * self.default_ikd
-        self._iki = np.ones(self.num_dof) * self.default_iki
+        self._kp = np.array(self.default_kp) if isinstance(self.default_kp, list) else np.ones(self.num_dof) * self.default_kp
+        self._kd = np.array(self.default_kd) if isinstance(self.default_kd, list) else np.ones(self.num_dof) * self.default_kd
+        self._ikp = np.array(self.default_ikp) if isinstance(self.default_ikp, list) else np.ones(self.num_dof) * self.default_ikp
+        self._ikd = np.array(self.default_ikd) if isinstance(self.default_ikd, list) else np.ones(self.num_dof) * self.default_ikd
+        self._iki = np.array(self.default_iki) if isinstance(self.default_iki, list) else np.ones(self.num_dof) * self.default_iki
         self._vel = np.ones(self.num_dof) * self.default_vel
         self._target_torque = np.array(self.default_torque)  # For PTM mode
         self._use_position_pd = False  # Will be enabled in main loop
