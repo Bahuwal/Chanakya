@@ -264,6 +264,10 @@ class LowLevelCANController:
             frame = data_recv[i:i+frame_length]
             frame_can_id = frame[8] | (frame[9] << 8) | (frame[10] << 16) | (frame[11] << 24)
             
+            # DEBUG: Log CAN IDs being received
+            if frame_can_id in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]:  # Only log our motor IDs
+                print(f"DEBUG poll: Received packet from CAN ID {frame_can_id}, in motors: {frame_can_id in self.motors}")
+            
             if frame_can_id in self.motors:
                 self._process_packet(frame[0:8], frame_can_id)
                 i += frame_length
@@ -289,6 +293,10 @@ class LowLevelCANController:
             recv_q = uint_to_float(q_uint, motor.Q_MIN, motor.Q_MAX, 16)
             recv_dq = uint_to_float(dq_uint, motor.DQ_MIN, motor.DQ_MAX, 12)
             recv_tau = uint_to_float(tau_uint, motor.TAU_MIN, motor.TAU_MAX, 12)
+            
+            # DEBUG: Log motor 0 processing
+            if can_id == 0:
+                print(f"DEBUG _process_packet: Motor 0 - Setting pos={recv_q:.2f}, old pos={motor.pos:.2f}")
             
             motor.update_state(status_words, recv_q, recv_dq, recv_tau, temperature, error_code)
 
