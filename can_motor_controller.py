@@ -238,17 +238,6 @@ class LowLevelCANController:
         except Exception as e:
             print(f"[_send_data] write error: {e}")
     
-    def set_zero_position(self, motor):
-        """Set current position as zero for the specified motor."""
-        motor_id = int(motor.id) if isinstance(motor, Motor) else int(motor)
-        # Command to set zero position (0xFF * 7 + 0xFE)
-        data_buff = bytes([
-            0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFE
-        ])
-        self._send_data(motor_id, data_buff)
-        sleep(0.005)
-
     def _recv_data(self, motor_id):
         """Receive and process data for a specific motor (like working code)."""
         data_recv = b''.join([self.rx_buffer, self.serial_device.read_all()])
@@ -650,26 +639,6 @@ class CANMotorController:
         sleep(0.1)
         print("Motor control started")
     
-    def set_zero_position(self, motor_indices=None):
-        """
-        Set zero position for specified motors (or all if None).
-        
-        Args:
-            motor_indices: List of motor indices (0-9) to zero. If None, zeros all.
-        """
-        if motor_indices is None:
-            motor_indices = range(self.num_dof)
-            
-        for i in motor_indices:
-            if 0 <= i < len(self._motors):
-                print(f"Zeroing motor {self._motors[i].id}...")
-                self._ctrl.set_zero_position(self._motors[i])
-        
-        # Reset target position to 0 to align with new motor zero
-        self._target_dof_position = np.zeros(self.num_dof)
-        if hasattr(self, 'dof_pos_target'): # Update external target if it exists
-             pass # External script handles this via getting current pos if needed, but here we forced 0.
-
     def stop(self):
         """Stop motor control loop."""
         self._stop_event.set()

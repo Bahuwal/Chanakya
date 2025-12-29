@@ -64,11 +64,6 @@ def main():
     )
     motor.run()
     
-    # Zero motors at startup to prevent jump starts
-    print("Zeroing all motors to starting position...")
-    motor.set_zero_position()
-    time.sleep(0.5)
-    
     # Set max torque (placeholder - handled internally by motors)
     motor.set_max_torque(np.ones(10) * 1000) #1000 milliamps (mA)
     
