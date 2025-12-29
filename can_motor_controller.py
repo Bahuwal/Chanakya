@@ -627,6 +627,11 @@ class CANMotorController:
                 sleep(0.005)
             print("✓ Motor parameters read - motors initialized")
         
+        # Initialize target positions to current motor positions to prevent jump starts
+        for i, motor in enumerate(self._motors):
+            self._target_dof_position[i] = motor.pos - self._motor_pos_offset[i]
+        print(f"✓ Initial target positions set to current motor positions")
+        
         # Start control thread (sends commands via motor_port)
         self._control_thread = threading.Thread(target=self._control_loop, daemon=True)
         self._control_thread.start()
