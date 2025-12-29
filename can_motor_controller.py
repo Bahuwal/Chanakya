@@ -633,6 +633,11 @@ class CANMotorController:
                     pass
                 sleep(0.005)
         
+        # Debug: Print motor positions before setting offsets
+        motor_positions = [motor.pos for motor in self._motors]
+        print(f"DEBUG: Motor positions after polling: {[f'{p:.2f}' for p in motor_positions]}")
+        print(f"DEBUG: Motor IDs: {[motor.id for motor in self._motors]}")
+        
         # Set current motor positions as reference zero to prevent jump starts
         # motor_pos_offset makes the current physical position act as "zero" for control
         for i, motor in enumerate(self._motors):
