@@ -168,9 +168,7 @@ class LowLevelCANController:
         ])
 
         self._send_data(motor.id, data_buff)
-        self._recv_data(motor.id)  # Receive for this specific motor
-        self.poll()  # Then poll all motors
-        sleep(0.001)  # Small delay like working code
+        sleep(0.001)  # Small delay for command processing
 
     def ptm_control(self, motor: Motor, pos, vel, kp, kd, torque):
         """
@@ -212,9 +210,7 @@ class LowLevelCANController:
         ])
 
         self._send_data(motor.id, data_buff)
-        self._recv_data(motor.id)  # Receive for this specific motor
-        self.poll()  # Then poll all motors  
-        sleep(0.001)  # Small delay like working code
+        sleep(0.001)  # Small delay for command processing
 
     def _control_cmd(self, motor, cmd):
         if isinstance(motor, Motor):
@@ -627,10 +623,11 @@ class CANMotorController:
                 sleep(0.005)
             print("✓ Motor parameters read - motors initialized")
         
-        # Initialize target positions to current motor positions to prevent jump starts
+        # Set current motor positions as reference zero to prevent jump starts
+        # motor_pos_offset makes the current physical position act as "zero" for control
         for i, motor in enumerate(self._motors):
-            self._target_dof_position[i] = motor.pos - self._motor_pos_offset[i]
-        print(f"✓ Initial target positions set to current motor positions")
+            self._motor_pos_offset[i] = motor.pos
+        print(f"✓ Current motor positions set as reference zero")
         
         # Start control thread (sends commands via motor_port)
         self._control_thread = threading.Thread(target=self._control_loop, daemon=True)

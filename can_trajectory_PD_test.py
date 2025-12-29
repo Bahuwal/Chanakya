@@ -70,14 +70,15 @@ def main():
     # Print control parameters for safety verification
     print(f"\n  Control Parameters (from config):") 
     print(f"    Mode: {control_mode.upper()}")
-    print(f"    kp  = {motor.kp[0]:.2f}")
-    print(f"    kd  = {motor.kd[0]:.2f}")
+    print(f"    kp  = {motor.kp}")
+    print(f"    kd  = {motor.kd}")
     if control_mode == "servo":
-        print(f"    ikp = {motor._ikp[0]:.2f}")
-        print(f"    ikd = {motor._ikd[0]:.2f}")
+        print(f"    ikp = {motor._ikp}")
+        print(f"    ikd = {motor._ikd}")
+        print(f"    iki = {motor._iki}")
     elif control_mode == "ptm":
-        print(f"    torque = {motor.target_torque[0]:.2f} Nm")
-    print(f"    vel = {motor._vel[0]:.2f}")
+        print(f"    torque = {motor.target_torque} Nm")
+    print(f"    vel = {motor._vel}")
     print(f"\n    Starting in 2 seconds... (Ctrl+C to abort)\n")
     time.sleep(2)
     
