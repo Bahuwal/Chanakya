@@ -79,6 +79,11 @@ def main():
     elif control_mode == "ptm":
         print(f"    torque = {motor.target_torque} Nm")
     print(f"    vel = {motor._vel}")
+    
+    # Zero all motors - set current position as reference zero
+    print(f"\n  Zeroing all motors (current position → 0.0)...")
+    motor.set_zero_position()
+    
     print(f"\n    Starting in 2 seconds... (Ctrl+C to abort)\n")
     time.sleep(2)
     

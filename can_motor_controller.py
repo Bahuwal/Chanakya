@@ -664,6 +664,26 @@ class CANMotorController:
         sleep(0.1)
         print("Motor control started")
     
+    def set_zero_position(self, motor_indices=None):
+        """
+        Set current position as zero for specified motors.
+        
+        Args:
+            motor_indices: List of motor indices (0-9) to zero. If None, zeros all motors.
+        """
+        if motor_indices is None:
+            motor_indices = range(self.num_dof)
+        
+        print(f"Setting zero position for {len(list(motor_indices))} motors...")
+        for i in motor_indices:
+            if 0 <= i < len(self._motors):
+                self._ctrl.set_zero_position(self._motors[i])
+                print(f"  ✓ Motor {self._motors[i].id} zeroed")
+        
+        # Small delay to let commands process
+        sleep(0.1)
+        print("✓ All motors zeroed - current positions are now reference zero")
+    
     def stop(self):
         """Stop motor control loop."""
         self._stop_event.set()
