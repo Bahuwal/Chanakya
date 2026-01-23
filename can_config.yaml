@@ -10,7 +10,7 @@ param_port: "/dev/ttyUSB1"  # Linux: /dev/ttyUSB1, macOS: /dev/cu.usbserial-*, W
 # Motor ID mapping (array index 0-9 to CAN motor ID)
 # Index 0-4: Left leg (hip pitch, hip roll, hip yaw, knee, ankle)
 # Index 5-9: Right leg (hip pitch, hip roll, hip yaw, knee, ankle)
-motor_ids: [0,1, 2, 3, 4, 5, 6, 7, 8, 9]
+motor_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 # Motor position limits (radians) - matching Duke's limits
 # Adjust these based on your robot's physical constraints

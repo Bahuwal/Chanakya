@@ -265,7 +265,7 @@ class LowLevelCANController:
             frame_can_id = frame[8] | (frame[9] << 8) | (frame[10] << 16) | (frame[11] << 24)
             
             # DEBUG: Log CAN IDs being received
-            if frame_can_id in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]:  # Only log our motor IDs
+            if frame_can_id in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:  # Only log our motor IDs
                 print(f"DEBUG poll: Received packet from CAN ID {frame_can_id}, in motors: {frame_can_id in self.motors}")
             
             if frame_can_id in self.motors:
@@ -294,9 +294,9 @@ class LowLevelCANController:
             recv_dq = uint_to_float(dq_uint, motor.DQ_MIN, motor.DQ_MAX, 12)
             recv_tau = uint_to_float(tau_uint, motor.TAU_MIN, motor.TAU_MAX, 12)
             
-            # DEBUG: Log motor 0 processing
-            if can_id == 0:
-                print(f"DEBUG _process_packet: Motor 0 - Setting pos={recv_q:.2f}, old pos={motor.pos:.2f}")
+            # DEBUG: Log motor 1 processing
+            if can_id == 1:
+                print(f"DEBUG _process_packet: Motor 1 - Setting pos={recv_q:.2f}, old pos={motor.pos:.2f}")
             
             motor.update_state(status_words, recv_q, recv_dq, recv_tau, temperature, error_code)
 
@@ -453,7 +453,7 @@ class CANMotorController:
             self.config_param_port = param_port_val
         
         # Motor IDs
-        self.motor_ids = config.get("motor_ids", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        self.motor_ids = config.get("motor_ids", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         
         # Limits
         self.min_limit = np.array(config.get("min_limit", [-0.785]*5 + [-0.785]*5))
