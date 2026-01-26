@@ -91,7 +91,7 @@ class SerialDataCollector:
         self.force_measurement_min = np.ones(4,dtype=np.int32)*5000
 
         #  NOTE: MUST match the actual values of the force sensor at zero contact
-        self.force_measurement_min = np.array([730,1020,1000,780])
+        self.force_measurement_min = np.array([1157,1157,1157,1157])
         # self.force_measurement_raw_buf = RingArrayBuffer(buffer_len=20,shape=(4,),dtype=int)
         self.force_measurement_threshold = 400
 
