@@ -251,7 +251,8 @@ class BipedController:
 
 
     def initialize_stance(self):
-        self.motor.control_mode_int8 = CONTROL_MODE.CYCLIC_SYNC_TORQUE
+        # Set high stiffness temporarily for initial stance
+        # CAN controller doesn't have CONTROL_MODE enum, it uses control_mode string
         self.motor.kp = np.ones(10)*40
         self.motor.kd = np.ones(10)*8.0 
         self.motor.use_position_pd = True
