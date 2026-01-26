@@ -40,10 +40,10 @@ task:
     commandZeroThreshold: 0.05
     control:
       actionScale: 1.0
-      damping: [8, 8, 8, 8, 5, 8, 8, 8, 8, 5]
+      damping: [10.0, 45.0, 45.0, 20.0, 22.0, 10.0, 45.0, 45.0, 20.0, 22.0]
       decimation: 4
       limit: 60
-      stiffness: [80, 80, 80, 80, 60, 80, 80, 80, 80, 60]
+      stiffness: [35.0, 130.0, 120.0, 80.0, 120.0, 35.0, 130.0, 120.0, 80.0, 120.0]
     dataPublisher:
       enable: true
       target_url: udp://localhost:9870
