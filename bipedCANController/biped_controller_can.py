@@ -167,7 +167,29 @@ class BipedController:
             self.sensor_data = self.sensors.get_latest_data()
             print("Waiting for sensor data to be ready...")
             time.sleep(0.01)
-        print("Sensor data is ready!")
+        print("✅ Sensor data is ready!")
+        
+        # Validate sensor data components at startup
+        print("\n📊 INITIAL SENSOR CHECK:")
+        imu_ok = (self.sensor_data.get("ang_vel") is not None and 
+                 self.sensor_data.get("gravity_vec") is not None)
+        force_ok = self.sensor_data.get("force_measurement") is not None
+        contact_ok = self.sensor_data.get("contact") is not None
+        
+        if imu_ok:
+            ang_vel = self.sensor_data["ang_vel"]
+            gravity = self.sensor_data["gravity_vec"]
+            print(f"  ✅ IMU Data: ω=[{ang_vel[0]:.2f}, {ang_vel[1]:.2f}, {ang_vel[2]:.2f}] rad/s, gravity_z={gravity[2]:.2f}")
+        else:
+            print("  ❌ IMU Data: NOT AVAILABLE")
+            
+        if force_ok and contact_ok:
+            force = self.sensor_data["force_measurement"]
+            contact = self.sensor_data["contact"]
+            print(f"  ✅ Load Cells: Left={force[0]:.1f}N Right={force[1]:.1f}N | Contact: L={contact[0]} R={contact[1]}")
+        else:
+            print("  ❌ Load Cells: NOT AVAILABLE")
+        print("")
         
         # data receiver
         self.data_receiver = DataReceiver(port=9871,decoding="msgpack",broadcast=True)
@@ -342,9 +364,51 @@ class BipedController:
         # Return a dictionary of observable data
         self.sensor_data = self.sensors.get_latest_data()
         if self.sensor_data is None:
-            print("WARNING: No sensor data received!")
+            print("⚠️  WARNING: No sensor data received!")
             self.should_reset = True
             return
+
+        # Debug: Print sensor data status periodically
+        if not hasattr(self, '_sensor_debug_counter'):
+            self._sensor_debug_counter = 0
+            self._last_sensor_status_time = time.time()
+        
+        self._sensor_debug_counter += 1
+        
+        # Print status every 50 cycles (~1 second at 50Hz) or at startup
+        if self._sensor_debug_counter == 1 or self._sensor_debug_counter % 50 == 0:
+            current_time = time.time()
+            
+            # Check IMU data
+            imu_ok = (self.sensor_data.get("ang_vel") is not None and 
+                     self.sensor_data.get("gravity_vec") is not None)
+            
+            # Check load cell data
+            force_ok = self.sensor_data.get("force_measurement") is not None
+            contact_ok = self.sensor_data.get("contact") is not None
+            
+            status_msg = "📊 SENSOR STATUS: "
+            if imu_ok:
+                status_msg += "✅ IMU "
+            else:
+                status_msg += "❌ IMU "
+                
+            if force_ok and contact_ok:
+                status_msg += "✅ LOAD_CELLS "
+            else:
+                status_msg += "❌ LOAD_CELLS "
+            
+            # Add sample values
+            if imu_ok:
+                ang_vel = self.sensor_data["ang_vel"]
+                gravity = self.sensor_data["gravity_vec"]
+                status_msg += f"| IMU: ω=[{ang_vel[0]:.2f},{ang_vel[1]:.2f},{ang_vel[2]:.2f}] g=[{gravity[2]:.2f}] "
+            
+            if force_ok:
+                force = self.sensor_data["force_measurement"]
+                status_msg += f"| Force: L={force[0]:.1f} R={force[1]:.1f}"
+            
+            print(status_msg)
 
         # print(self.sensor_data["sps"])
         self.base_ang_vel = np.array(self.sensor_data["ang_vel"])
