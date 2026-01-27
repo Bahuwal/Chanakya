@@ -185,8 +185,16 @@ class SerialDataCollector:
 
             self.force_measurement_raw[:] = self.unpacked[0:4] # 0 is left-back, 1 left-front, 2 right-back, 3 right-front
             self.force_measurement[:] = self.filter_force_measurement.add(self.force_measurement_raw)
-            self.contact[0] = (self.force_measurement[0] + self.force_measurement[1]-self.force_measurement_min[0]-self.force_measurement_min[1])>self.force_measurement_threshold 
-            self.contact[1] = (self.force_measurement[2] + self.force_measurement[3]-self.force_measurement_min[2]-self.force_measurement_min[3])>self.force_measurement_threshold
+            
+            # ========== HARDCODED CONTACT: Both feet always in contact ==========
+            # Uncomment the lines below to use actual load cell threshold-based contact detection
+            # self.contact[0] = (self.force_measurement[0] + self.force_measurement[1]-self.force_measurement_min[0]-self.force_measurement_min[1])>self.force_measurement_threshold 
+            # self.contact[1] = (self.force_measurement[2] + self.force_measurement[3]-self.force_measurement_min[2]-self.force_measurement_min[3])>self.force_measurement_threshold
+            
+            # Hardcoded: Always in contact with ground (both feet)
+            self.contact[0] = True  # Left foot always in contact
+            self.contact[1] = True  # Right foot always in contact
+            # ====================================================================
             
             self.lin_acc_raw[:] = self.unpacked[4:7]
             self.ang_vel_raw[:] = self.unpacked[7:10]
