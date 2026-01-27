@@ -89,7 +89,9 @@ class RobotGUI:
             ("Motor Control", "motors_ok"),
             ("IMU Data", "imu_ok"),
             ("Load Cells", "loadcells_ok"),
-            ("Loop Rate", "loop_rate"),
+            ("Control Loop", "loop_rate"),
+            ("Serial Port", "serial_rate"),
+            ("IMU Rate", "imu_rate"),
             ("Decimation", "decimation")
         ]
         
@@ -195,34 +197,47 @@ class RobotGUI:
         table_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
         # Headers
-        headers = ["ID", "Position", "Target", "Error"]
-        for col, header in enumerate(headers):
+        headers = ["ID", "Position", "Velocity", "Torque", "Target", "Error"]
+        col_widths = [4, 8, 8, 8, 8, 8]
+        for col, (header, width) in enumerate(zip(headers, col_widths)):
             tk.Label(table_frame, text=header, bg='#1a1a1a', fg='#ffaa00',
-                    font=('Courier', 9, 'bold'), width=10).grid(row=0, column=col, sticky='ew')
+                    font=('Courier', 9, 'bold'), width=width).grid(row=0, column=col, sticky='ew', padx=1)
         
         self.motor_labels = {}
         for i in range(10):
             # Motor ID
             tk.Label(table_frame, text=f"M{i+1}", bg='#2d2d2d', fg='#aaaaaa',
-                    font=('Courier', 9), width=10).grid(row=i+1, column=0)
+                    font=('Courier', 9), width=4).grid(row=i+1, column=0, padx=1)
             
             # Position
             pos_label = tk.Label(table_frame, text="0.00", bg='#2d2d2d', fg='#00ff00',
-                                font=('Courier', 9), width=10)
-            pos_label.grid(row=i+1, column=1)
+                                font=('Courier', 8), width=8)
+            pos_label.grid(row=i+1, column=1, padx=1)
+            
+            # Velocity
+            vel_label = tk.Label(table_frame, text="0.00", bg='#2d2d2d', fg='#00ddff',
+                                font=('Courier', 8), width=8)
+            vel_label.grid(row=i+1, column=2, padx=1)
+            
+            # Torque
+            torque_label = tk.Label(table_frame, text="0.00", bg='#2d2d2d', fg='#ff88ff',
+                                   font=('Courier', 8), width=8)
+            torque_label.grid(row=i+1, column=3, padx=1)
             
             # Target  
             target_label = tk.Label(table_frame, text="0.00", bg='#2d2d2d', fg='#00aaff',
-                                   font=('Courier', 9), width=10)
-            target_label.grid(row=i+1, column=2)
+                                   font=('Courier', 8), width=8)
+            target_label.grid(row=i+1, column=4, padx=1)
             
             # Error
             error_label = tk.Label(table_frame, text="0.00", bg='#2d2d2d', fg='#ff6666',
-                                  font=('Courier', 9), width=10)
-            error_label.grid(row=i+1, column=3)
+                                  font=('Courier', 8), width=8)
+            error_label.grid(row=i+1, column=5, padx=1)
             
             self.motor_labels[i] = {
                 'pos': pos_label,
+                'vel': vel_label,
+                'torque': torque_label,
                 'target': target_label,
                 'error': error_label
             }
@@ -323,20 +338,37 @@ class RobotGUI:
                 self.cmd_labels['vel_y'].config(text=f"{c.commands[1]:+.2f}")
                 self.cmd_labels['yaw'].config(text=f"{c.commands[2]:+.2f}")
             
-            # Loop Rate
+            # Loop Rate and Frequencies
             if hasattr(c, 'decimation_actual'):
                 self.status_labels['decimation'].config(text=f"{c.decimation_actual}")
                 loop_hz = 1000.0 / c.decimation_actual if c.decimation_actual > 0 else 0
                 self.status_labels['loop_rate'].config(text=f"{loop_hz:.1f} Hz")
             
-            # Motors
+            # Serial Port and IMU Rate
+            if hasattr(c, 'sensor_data') and c.sensor_data:
+                serial_rate = c.sensor_data.get('sps', 0)
+                self.status_labels['serial_rate'].config(text=f"{serial_rate:.1f} Hz")
+                # IMU rate is same as serial rate (they come together)
+                self.status_labels['imu_rate'].config(text=f"{serial_rate:.1f} Hz")
+            else:
+                self.status_labels['serial_rate'].config(text="--- Hz")
+                self.status_labels['imu_rate'].config(text="--- Hz")
+            
+            # Motors - Position, Velocity, Torque, Target, Error
             if hasattr(c, 'dof_pos') and hasattr(c, 'dof_pos_target'):
+                motor_vel = c.motor.dof_velocity_filtered if hasattr(c.motor, 'dof_velocity_filtered') else np.zeros(10)
+                motor_torque = c.motor.dof_force if hasattr(c.motor, 'dof_force') else np.zeros(10)
+                
                 for i in range(10):
                     pos = c.dof_pos[i]
                     target = c.dof_pos_target[i]
                     error = target - pos
+                    vel = motor_vel[i]
+                    torque = motor_torque[i]
                     
                     self.motor_labels[i]['pos'].config(text=f"{pos:+.3f}")
+                    self.motor_labels[i]['vel'].config(text=f"{vel:+.3f}")
+                    self.motor_labels[i]['torque'].config(text=f"{torque:+.2f}")
                     self.motor_labels[i]['target'].config(text=f"{target:+.3f}")
                     self.motor_labels[i]['error'].config(text=f"{error:+.3f}")
             
