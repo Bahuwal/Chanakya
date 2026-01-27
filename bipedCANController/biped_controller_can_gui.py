@@ -361,10 +361,22 @@ class RobotGUI:
         self.root.quit()
 
 
-# Import and extend the existing biped controller
-exec(open('biped_controller_can.py').read())
+# Import BipedController properly
+import importlib.util
+spec = importlib.util.spec_from_file_location("biped_controller", "biped_controller_can.py")
+biped_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(biped_module)
+BipedController = biped_module.BipedController
 
 if __name__ == "__main__":
+    # Check if display is available (for Linux)
+    import os
+    if 'DISPLAY' not in os.environ:
+        print("❌ ERROR: No display available!")
+        print("   If running via SSH, use: ssh -X user@host")
+        print("   Or run the terminal version: python3 biped_controller_can.py")
+        sys.exit(1)
+    
     print("🚀 Starting Biped Controller with GUI...")
     
     # Create controller
