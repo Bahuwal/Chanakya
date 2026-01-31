@@ -18,9 +18,55 @@ Based on your board pinout:
 
 ![Nucleo H723ZG Pinout](nucleo_h723zg_pinout.png)
 
-### 2. CAN Transceiver Connection
+### 2. CAN Transceiver Connection (SN65HVD230)
 
-You need a CAN transceiver module (TJA1050, MCP2551, or SN65HVD230):
+The **SN65HVD230** is a 3.3V CAN transceiver - perfect for the Nucleo H723ZG!
+
+#### SN65HVD230 Board Pinout
+
+Most SN65HVD230 modules have these pins:
+- **3V3** - 3.3V power
+- **GND** - Ground
+- **CTX** - CAN TX (receives from MCU)
+- **CRX** - CAN RX (sends to MCU)
+- **CANH** - CAN High
+- **CANL** - CAN Low
+
+#### Complete Wiring
+
+```
+Nucleo H723ZG (CN9)         SN65HVD230           Motors
+───────────────────         ──────────           ──────
+Pin 27 (D66/PD1)      →     CTX (TX input)
+Pin 25 (D67/PD0)      ←     CRX (RX output)
+3.3V (CN6 Pin 4)      →     3V3
+Pin 12 or 23 (GND)    →     GND
+                            CANH            →    Yellow wire to all motors
+                            CANL            →    Green wire to all motors
+                            
+Motor Power Supply:
+GND                   →     Motor GND (common ground!)
+```
+
+#### 3.3V Power Pin Location on Nucleo
+
+You can get 3.3V from:
+- **CN6 Pin 4** (3V3 on Arduino connector)
+- **CN8 Pin 7** (3.3V on Morpho connector)
+
+#### Important Notes for SN65HVD230
+
+1. **Use 3.3V only** - DO NOT use 5V (will damage the board!)
+2. **120Ω Termination**: Add resistor between CANH and CANL at **both ends** of CAN bus
+3. **Common Ground**: Make sure Nucleo GND, transceiver GND, and motor GND are connected
+
+---
+
+## Hardware Setup (Original Generic Version - Skip to SN65HVD230 Above)
+
+~~You need a CAN transceiver module (TJA1050, MCP2551, or SN65HVD230):~~
+
+**For generic CAN transceivers (if not using SN65HVD230):**
 
 ```
 Nucleo H723ZG (CN9)     CAN Transceiver        Motors
@@ -35,6 +81,8 @@ Pin 12/23 (GND)    →    GND (Pin 2)
 
 * Use 5V for TJA1050/MCP2551, or 3.3V for SN65HVD230
 ```
+
+**⚠️ For SN65HVD230, see the specific wiring section above!**
 
 **Important**: Add **120Ω termination resistors** between CANH and CANL at both ends of the bus!
 
