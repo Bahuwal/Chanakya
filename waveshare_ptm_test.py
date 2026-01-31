@@ -353,7 +353,7 @@ def load_usb_config(path="usb.json"):
     """Load USB config with Waveshare defaults"""
     default = {
         "motor_port": "/dev/ttyUSB0",  # Waveshare on Linux
-        "param_port": "/dev/ttyUSB0",  # Same port for Waveshare
+        "param_port": "/dev/ttyUSB1",  # Keep separate for feedback (or same device if single adapter)
         "baudrate": 2000000             # 2 Mbps for Waveshare
     }
     if os.path.exists(path):
