@@ -89,9 +89,56 @@ class MotorController:
         """Initialize with CAN bus for motor commands"""
         self.can_bus = can_bus
         self.motors = dict()
+        self.running = False
+        self.rx_thread = None
 
     def add_motor(self, motor: Motor):
         self.motors[motor.id] = motor
+    
+    def start_feedback_reading(self):
+        """Start background thread to read CAN feedback"""
+        if self.running:
+            return
+        self.running = True
+        self.rx_thread = threading.Thread(target=self._can_receive_loop, daemon=True)
+        self.rx_thread.start()
+        print("✓ CAN feedback reader started")
+    
+    def stop_feedback_reading(self):
+        """Stop CAN feedback reading"""
+        self.running = False
+        if self.rx_thread:
+            self.rx_thread.join(timeout=1.0)
+    
+    def _can_receive_loop(self):
+        """Background thread to read CAN feedback"""
+        while self.running:
+            try:
+                msg = self.bus.recv(timeout=0.005)
+                if msg and msg.arbitration_id in self.motors:
+                    self._process_can_feedback(msg)
+            except:
+                pass
+    
+    def _process_can_feedback(self, msg):
+        """Process CAN feedback message"""
+        motor = self.motors.get(msg.arbitration_id)
+        if not motor or len(msg.data) < 8:
+            return
+        
+        data = msg.data
+        status_words = data[0]
+        q_uint = (data[1] << 8) | data[2]
+        dq_uint = (data[3] << 4) | (data[4] >> 4)
+        tau_uint = ((data[4] & 0x0F) << 8) | data[5]
+        
+        recv_q = uint_to_float(q_uint, motor.Q_MIN, motor.Q_MAX, 16)
+        recv_dq = uint_to_float(dq_uint, motor.DQ_MIN, motor.DQ_MAX, 12)
+        recv_tau = uint_to_float(tau_uint, motor.TAU_MIN, motor.TAU_MAX, 12)
+        
+        error_code = data[6]
+        temperature = data[7]
+        motor.get_data(status_words, recv_q, recv_dq, recv_tau, temperature, error_code)
 
     # Zero Position Command
     def set_zero_position(self, motor: Motor):
@@ -369,6 +416,7 @@ if __name__ == "__main__":
     # Command controller (sends via CAN)
     ctrl = MotorController(motor_can)
     ctrl.add_motor(revo)
+    ctrl.start_feedback_reading()  # Start reading CAN feedback
     ctrl.motor_mode(revo)
 
     # Parameter reader controller (reads feedback via USB)
