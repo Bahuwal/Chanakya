@@ -131,26 +131,7 @@ class MotorController:
 
     # PTM MODE (8 bytes) - Position-Torque Mix Mode
     def PTM_control(self, motor: Motor, pos, vel, kp, kd, torque, type_name="REVO"):
-        """
-        PTM (Position-Torque Mix) mode control :
-        
-        Control Formula: T_total = Kp×(P_ref - P_actual) + Kd×(V_ref - V_actual) + T_ref
-        
-        Args:
-            motor: Motor objects
-            pos: Target position (radians), -12.5 to +12.5
-            vel: Target velocity (rad/s), -10.0 to +10.0
-            kp: Position proportional gain, 0.0 to 250.0
-            kd: Position derivative gain, 0.0 to 50.0
-            torque: Feed-forward torque (Nm), -50.0 to +50.0
-            
-        Byte Structure :
-            Byte 0-1: Position (16-bit)
-            Byte 2, 3[7:4]: Velocity (12-bit)
-            Byte 3[3:0], 4: Kp (12-bit)
-            Byte 5, 6[7:4]: Kd (12-bit)
-            Byte 6[3:0], 7: Torque (12-bit)
-        """
+        """PTM control - sends via CAN"""
         # Scale parameters to integer ranges
         pos_uint = float_to_uint(pos, motor.Q_MIN, motor.Q_MAX, 16)      # 16-bit
         vel_uint = float_to_uint(vel, motor.DQ_MIN, motor.DQ_MAX, 12)    # 12-bit
@@ -171,8 +152,6 @@ class MotorController:
         ])
 
         self.__send_data(motor.id, data_buff)
-        # Poll for immediate response
-        self.poll()
         sleep(0.001)
 
     # Low-level TX/RX
@@ -195,17 +174,50 @@ class MotorController:
         except Exception as e:
             print(f"[__send_data] CAN send error: {e}")
 
+
+# PARAM CONTROLLER - Reads motor parameters via USB (REQUIRED for initialization)
+class ParamController:
+    """USB-based parameter reader - required for motor initialization"""
+    def __init__(self, serial_device):
+        self.serial_device = serial_device
+        self.motors = dict()
+        self.rx_buffer = bytes()
+
+        # Close port if already open
+        try:
+            if hasattr(self.serial_device, "is_open") and self.serial_device.is_open:
+                self.serial_device.close()
+        except Exception:
+            pass
+
+        try:
+            self.serial_device.open()
+            print(f"✓ Param port {getattr(self.serial_device, 'port', '<unknown>')} opened")
+        except Exception as e:
+            print(f"✗ Error opening param port: {e}")
+
+    def add_motor(self, motor: Motor):
+        self.motors[motor.id] = motor
+
+    def poll(self):
+        """Poll serial device for parameter data"""
+        if not self.motors:
+            try:
+                self.__recv_data("REVO", 0)
+            except Exception:
+                pass
+        else:
+            for mid, motor in list(self.motors.items()):
+                try:
+                    self.__recv_data(motor.type, mid)
+                except Exception:
+                    pass
+
     def __recv_data(self, type, motor_id):
         try:
             data_recv = b''.join([self.rx_buffer, self.serial_device.read_all()])
         except Exception as e:
             return
-
-        # DEBUG: Print raw serial data ONCE
-        if len(data_recv) > 0 and not hasattr(self, '_debug_printed'):
-            print(f"\n[DEBUG] Port {getattr(self.serial_device, 'port', '?')} received {len(data_recv)} bytes:")
-            print(f"  Hex: {data_recv.hex(' ')}")
-            self._debug_printed = True
 
         packets = self.__extract_packets(data_recv, type, motor_id)
 
@@ -221,20 +233,6 @@ class MotorController:
             data = packet[0:8]
             CANID = (packet[11] << 24) | (packet[10] << 16) | (packet[9] << 8) | packet[8]
             self.__process_packet(data, CANID, type)
-
-    def poll(self):
-        """Public method to poll serial device and process incoming frames."""
-        if not self.motors:
-            try:
-                self.__recv_data("REVO", 0)
-            except Exception:
-                pass
-        else:
-            for mid, motor in list(self.motors.items()):
-                try:
-                    self.__recv_data(motor.type, mid)
-                except Exception:
-                    pass
 
     def __extract_packets(self, data, type, CANID):
         frames = []
@@ -297,7 +295,7 @@ def load_usb_config(path="usb.json"):
 
 
 # Param polling thread 
-def start_param_polling(param_controller: MotorController, poll_interval=0.005, stop_event=None):
+def start_param_polling(param_controller: ParamController, poll_interval=0.005, stop_event=None):
     """Start background thread to continuously poll parameter feedback."""
     def run():
         while not (stop_event and stop_event.is_set()):
@@ -373,13 +371,13 @@ if __name__ == "__main__":
     ctrl.add_motor(revo)
     ctrl.motor_mode(revo)
 
-    # Parameter reader controller (reads feedback)
+    # Parameter reader controller (reads feedback via USB)
     param_controller = None
     stop_event = threading.Event()
     
     if param_serial is not None:
         try:
-            param_controller = MotorController(param_serial)
+            param_controller = ParamController(param_serial)
             param_controller.add_motor(revo)  # Same motor object
             start_param_polling(param_controller, poll_interval=0.005, stop_event=stop_event)
             print("✓ Parameter polling thread started.")
