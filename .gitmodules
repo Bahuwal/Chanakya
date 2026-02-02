@@ -1,3 +1,0 @@
-[submodule "SOEM"]
-	path = dukeHumanoidHardwareControl/ext/SOEM
-	url = https://github.com/OpenEtherCATsociety/SOEM.git

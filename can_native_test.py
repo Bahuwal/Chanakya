@@ -24,19 +24,19 @@ def main():
     print(f"Native CAN Test - Motor ID {motor_id}")
     print("="*70)
     print("Hardware: Jetson J17 + SN65HVD230 + Motors")
-    print("Interface: can0 @ 500kbps")
+    print("Interface: can0 @ 1Mbps")
     print("="*70)
     
     # Create controller
     try:
-        controller = CANMotorController(channel='can0', bitrate=500000)
+        controller = CANMotorController(channel='can0', bitrate=1000000)
     except Exception as e:
         print(f"\n✗ Failed to initialize CAN!")
         print(f"\nTroubleshooting:")
         print(f"  1. Check if CAN is enabled:")
         print(f"     $ ls /sys/class/net/ | grep can")
         print(f"  2. Bring up CAN interface:")
-        print(f"     $ sudo ip link set can0 type can bitrate 500000")
+        print(f"     $ sudo ip link set can0 type can bitrate 1000000")
         print(f"     $ sudo ip link set can0 up")
         print(f"  3. Verify device tree:")
         print(f"     $ sudo /opt/nvidia/jetson-io/jetson-io.py")

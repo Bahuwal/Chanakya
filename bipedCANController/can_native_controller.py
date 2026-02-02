@@ -55,13 +55,13 @@ class Motor:
 class CANMotorController:
     """Motor controller using Linux SocketCAN interface"""
     
-    def __init__(self, channel='can0', bitrate=500000):
+    def __init__(self, channel='can0', bitrate=1000000):
         """
         Initialize CAN motor controller
         
         Args:
             channel: CAN interface name (e.g., 'can0')
-            bitrate: CAN bus speed in bps (500000 for Motorevo)
+            bitrate: CAN bus speed in bps (1000000 for Motorevo)
         """
         self.channel = channel
         self.bitrate = bitrate
@@ -273,7 +273,7 @@ if __name__ == "__main__":
     print("="*70)
     
     # Create controller
-    controller = CANMotorController(channel='can0', bitrate=500000)
+    controller = CANMotorController(channel='can0', bitrate=1000000)
     
     # Create motor
     motor = Motor("test_motor", motor_id=3, type_name="REVO")

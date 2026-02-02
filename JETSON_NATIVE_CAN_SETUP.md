@@ -67,7 +67,7 @@ sudo /opt/nvidia/jetson-io/jetson-io.py
 
 # Navigate to:
 #   Configure Jetson 40pin Header → Configure header pins manually
-#   Find CAN0 and enable it
+#   Find CAN0 and enable it (ensure 1Mbps if configurable)
 #   Save and exit
 #   Reboot when prompted
 
@@ -118,8 +118,8 @@ pip3 install python-can
 ### Step 3: Configure CAN Interface
 
 ```bash
-# Bring up CAN0 at 500 kbps (standard for Motorevo motors)
-sudo ip link set can0 type can bitrate 500000
+# Bring up CAN0 at 1 Mbps (standard for Motorevo motors)
+sudo ip link set can0 type can bitrate 1000000
 sudo ip link set can0 up
 
 # Verify interface is up
@@ -134,7 +134,7 @@ Create `/etc/systemd/network/80-can.network`:
 Name=can0
 
 [CAN]
-BitRate=500000
+BitRate=1000000
 RestartSec=100ms
 ```
 
@@ -198,7 +198,7 @@ class Motor:
 class CANMotorController:
     """Motor controller using Linux SocketCAN"""
     
-    def __init__(self, channel='can0', bitrate=500000):
+    def __init__(self, channel='can0', bitrate=1000000):
         self.channel = channel
         self.bitrate = bitrate
         self.motors = {}
@@ -293,7 +293,7 @@ class CANMotorController:
 from can_native_controller import CANMotorController, Motor
 
 # Create controller
-controller = CANMotorController(channel='can0', bitrate=500000)
+controller = CANMotorController(channel='can0', bitrate=1000000)
 
 # Add motor
 motor = Motor("hip_motor", motor_id=3, type_name="REVO")
@@ -381,7 +381,7 @@ sudo ip link set can0 up
 1. **Check wiring**: Verify CTX/CRX are not swapped
 2. **Check termination**: 120Ω resistors at both ends
 3. **Check motor power**: Motors must be powered on
-4. **Check bitrate**: Must match motor settings (usually 500kbps)
+4. **Check bitrate**: Must match motor settings (1Mbps for Motorevo)
 
 ### Bus errors
 
