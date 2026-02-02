@@ -121,7 +121,13 @@ class CANMotorController:
         self.motors[motor.id] = motor
     
     def start(self):
-        """Start background receiver thread"""
+        """
+        Start background receiver thread
+        
+        IMPORTANT: This acts as continuous parameter polling which is
+        REQUIRED for Motorevo motors to operate. The motors will not
+        respond to commands unless parameter reading is active!
+        """
         if self.running:
             return
         self.running = True
@@ -136,14 +142,20 @@ class CANMotorController:
         self.bus.shutdown()
     
     def _receive_loop(self):
-        """Background RX thread"""
+        """
+        Background RX thread - Continuous parameter polling
+        
+        This continuously reads CAN messages, which is REQUIRED for
+        Motorevo motors. They expect constant parameter polling to operate.
+        """
         while self.running:
             try:
-                msg = self.bus.recv(timeout=0.01)
+                # Poll aggressively (5ms like original param port)
+                msg = self.bus.recv(timeout=0.005)
                 if msg and msg.arbitration_id in self.motors:
                     self._process_feedback(msg)
             except:
-                pass
+                pass  # Continue polling even on errors
     
     def _process_feedback(self, msg):
         """Parse feedback message"""
@@ -230,9 +242,15 @@ def main():
     motor = Motor(motor_name=f"motor_{motor_id}", motor_id=motor_id, type_name="REVO")
     controller.add_motor(motor)
     
-    # Start receiver
+    # CRITICAL: Start parameter polling
+    # Motorevo motors require continuous parameter reading to operate!
+    print("\nStarting parameter polling thread...")
     controller.start()
-    time.sleep(0.2)
+    time.sleep(0.5)
+    
+    print("✓ Parameter polling active")
+    print(f"  Position: {motor.pos:.3f} rad")
+    print(f"  Temperature: {motor.temperature}°C\n")
     
     # Test parameters
     target_position = 5.0  # rad

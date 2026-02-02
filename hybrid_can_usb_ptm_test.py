@@ -269,7 +269,7 @@ def main():
         param_serial = serial.Serial(port=param_port, baudrate=BAUDRATE, timeout=0.05)
     except Exception as e:
         print(f"✗ Failed to open param port {param_port}: {e}")
-  print(f"  Update usb.json or specify correct port")
+        print(f"  Update usb.json or specify correct port")
         return 1
     
     # Create CAN controller
