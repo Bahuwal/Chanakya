@@ -304,6 +304,10 @@ class CANMotorSender:
         self.is_open = True
         self.debug = True  # Enable debug output
     
+    def open(self):
+        """Dummy method to match serial interface"""
+        self.is_open = True
+    
     def write(self, data):
         """Extract CAN data from serial protocol wrapper and send via CAN"""
         if len(data) >= 14:
