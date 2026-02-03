@@ -302,20 +302,33 @@ class CANMotorSender:
     def __init__(self, can_bus):
         self.can_bus = can_bus
         self.is_open = True
+        self.debug = True  # Enable debug output
     
     def write(self, data):
         """Extract CAN data from serial protocol wrapper and send via CAN"""
         if len(data) >= 14:
             can_data = data[2:10]  # Extract 8 CAN data bytes
             motor_id = data[10] | (data[11] << 8) | (data[12] << 16) | (data[13] << 24)
-            msg = can.Message(arbitration_id=motor_id, data=can_data, is_extended_id=False)
+            
+            # Create standard 11-bit CAN frame
+            msg = can.Message(
+                arbitration_id=motor_id,  # Frame ID = Motor ID
+                data=can_data,             # 8 bytes of data
+                is_extended_id=False       # Standard 11-bit ID
+            )
+            
+            # Debug output
+            if self.debug:
+                print(f"[CAN TX] ID: 0x{motor_id:08X} ({motor_id}) | Data: {' '.join([f'{b:02X}' for b in can_data])}")
+            
             try:
                 self.can_bus.send(msg)
-            except:
-                pass
+            except Exception as e:
+                print(f"[CAN TX ERROR] {e}")
     
     def close(self):
         self.is_open = False
+
 
 
 # Helper: USB config loader
