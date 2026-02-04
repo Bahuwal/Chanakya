@@ -84,10 +84,14 @@ class Motor:
 
 
 class MotorController:
-    def __init__(self, serial_device):
+    def __init__(self, serial_device, can_bus=None):
+        """Initialize with serial (for CAN wrapper) and optional CAN bus for feedback"""
         self.serial_device = serial_device
+        self.can_bus = can_bus  # For reading CAN feedback
         self.motors = dict()
         self.rx_buffer = bytes()
+        self.running = False
+        self.rx_thread = None
 
         self.tx_buffer = bytearray([
             0xAA, 0x01,
@@ -111,6 +115,64 @@ class MotorController:
 
     def add_motor(self, motor: Motor):
         self.motors[motor.id] = motor
+    
+    def start_can_feedback(self):
+        """Start CAN feedback reading thread"""
+        if not self.can_bus or self.running:
+            return
+        self.running = True
+        self.rx_thread = threading.Thread(target=self._can_receive_loop, daemon=True)
+        self.rx_thread.start()
+        print("✓ CAN feedback receiver started")
+    
+    def stop_can_feedback(self):
+        """Stop CAN feedback reading"""
+        self.running = False
+        if self.rx_thread:
+            self.rx_thread.join(timeout=1.0)
+    
+    def _can_receive_loop(self):
+        """Background thread to read CAN feedback from motor"""
+        print("[CAN RX] Listening for motor feedback...")
+        while self.running:
+            try:
+                msg = self.can_bus.recv(timeout=0.01)
+                if msg:
+                    # Print ALL CAN messages received
+                    print(f"[CAN RX] ID: 0x{msg.arbitration_id:03X} ({msg.arbitration_id}) | Data: {' '.join([f'{b:02X}' for b in msg.data])}")
+                    
+                    if msg.arbitration_id in self.motors:
+                        self._process_can_feedback(msg)
+                    else:
+                        print(f"  └─ Unknown motor ID (registered motors: {list(self.motors.keys())})")
+            except Exception as e:
+                if str(e) != "Receive timeout":
+                    print(f"[CAN RX ERROR] {e}")
+                pass
+    
+    def _process_can_feedback(self, msg):
+        """Process CAN feedback message from motor"""
+        motor = self.motors.get(msg.arbitration_id)
+        if not motor or len(msg.data) < 8:
+            print(f"  └─ Invalid data length: {len(msg.data)} bytes")
+            return
+        
+        data = msg.data
+        status_words = data[0]
+        q_uint = (data[1] << 8) | data[2]
+        dq_uint = (data[3] << 4) | (data[4] >> 4)
+        tau_uint = ((data[4] & 0x0F) << 8) | data[5]
+        
+        recv_q = uint_to_float(q_uint, motor.Q_MIN, motor.Q_MAX, 16)
+        recv_dq = uint_to_float(dq_uint, motor.DQ_MIN, motor.DQ_MAX, 12)
+        recv_tau = uint_to_float(tau_uint, motor.TAU_MIN, motor.TAU_MAX, 12)
+        
+        error_code = data[6]
+        temperature = data[7]
+        
+        print(f"  └─ Parsed: Pos={recv_q:.3f} Vel={recv_dq:.3f} Tau={recv_tau:.3f} Temp={temperature}°C")
+        
+        motor.get_data(status_words, recv_q, recv_dq, recv_tau, temperature, error_code)
 
     # Zero Position Command
     def set_zero_position(self, motor: Motor):
@@ -190,8 +252,6 @@ class MotorController:
         ])
 
         self.__send_data(motor.id, data_buff)
-        # Poll for immediate response
-        self.poll()
         sleep(0.001)
 
     # Low-level TX/RX
@@ -216,84 +276,6 @@ class MotorController:
             self.serial_device.write(self.tx_buffer)
         except Exception as e:
             print(f"[__send_data] write error: {e}")
-
-    def __recv_data(self, type, motor_id):
-        try:
-            data_recv = b''.join([self.rx_buffer, self.serial_device.read_all()])
-        except Exception as e:
-            return
-
-        # DEBUG: Print raw serial data ONCE
-        if len(data_recv) > 0 and not hasattr(self, '_debug_printed'):
-            print(f"\n[DEBUG] Port {getattr(self.serial_device, 'port', '?')} received {len(data_recv)} bytes:")
-            print(f"  Hex: {data_recv.hex(' ')}")
-            self._debug_printed = True
-
-        packets = self.__extract_packets(data_recv, type, motor_id)
-
-        # Handle remainder bytes
-        frame_length = 12
-        if len(data_recv) >= frame_length:
-            remainder_pos = len(data_recv) % frame_length
-            self.rx_buffer = data_recv[-remainder_pos:] if remainder_pos else b''
-        else:
-            self.rx_buffer = data_recv
-
-        for packet in packets:
-            data = packet[0:8]
-            CANID = (packet[11] << 24) | (packet[10] << 16) | (packet[9] << 8) | packet[8]
-            self.__process_packet(data, CANID, type)
-
-    def poll(self):
-        """Public method to poll serial device and process incoming frames."""
-        if not self.motors:
-            try:
-                self.__recv_data("REVO", 0)
-            except Exception:
-                pass
-        else:
-            for mid, motor in list(self.motors.items()):
-                try:
-                    self.__recv_data(motor.type, mid)
-                except Exception:
-                    pass
-
-    def __extract_packets(self, data, type, CANID):
-        frames = []
-        tail1 = (CANID >> 24) & 0xFF
-        tail2 = (CANID >> 16) & 0xFF
-        tail3 = (CANID >> 8) & 0xFF
-        tail4 = CANID & 0xFF
-        tail = [tail4, tail3, tail2, tail1]
-
-        frame_length = 12
-        i = 0
-
-        while i <= len(data) - frame_length:
-            if list(data[i+8:i+12]) == tail:
-                frames.append(data[i:i+frame_length])
-                i += frame_length
-            else:
-                i += 1
-
-        return frames
-
-    def __process_packet(self, data, CANID, type):
-        if CANID != 0x00 and CANID in self.motors:
-            if type == "REVO":
-                status_words = data[0]
-                q_uint = (data[1] << 8) | data[2]
-                dq_uint = (data[3] << 4) | (data[4] >> 4)
-                tau_uint = ((data[4] & 0x0F) << 8) | data[5]
-
-                motor = self.motors[CANID]
-                recv_q = uint_to_float(q_uint, motor.Q_MIN, motor.Q_MAX, 16)
-                recv_dq = uint_to_float(dq_uint, motor.DQ_MIN, motor.DQ_MAX, 12)
-                recv_tau = uint_to_float(tau_uint, motor.TAU_MIN, motor.TAU_MAX, 12)
-
-                error_code = data[6]
-                temperature = data[7]
-                motor.get_data(status_words, recv_q, recv_dq, recv_tau, temperature, error_code)
 
 
 # CAN wrapper - acts like serial.Serial for MotorController
@@ -427,11 +409,12 @@ if __name__ == "__main__":
         param_serial = None
 
     # Initialize motor
-    revo = Motor("revo_motor", motor_id=7, type_name="REVO")
+    revo = Motor("revo_motor", motor_id=3, type_name="REVO")
 
-    # Command controller (sends via motor_port)
-    ctrl = MotorController(motor_serial)
+    # Command controller (sends via CAN, reads feedback from CAN)
+    ctrl = MotorController(motor_serial, can_bus=motor_can_bus)
     ctrl.add_motor(revo)
+    ctrl.start_can_feedback()  # Start reading CAN feedback
     ctrl.motor_mode(revo)
 
     # Parameter reader controller (reads feedback)
