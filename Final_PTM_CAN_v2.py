@@ -289,9 +289,6 @@ class MotorController:
 
         self.tx_buffer[2:10] = data[:8] if len(data) >= 8 else (data + bytes(8 - len(data)))
         
-        # Track last sent data to filter echo
-        self.last_tx_data[motor_id] = bytes(self.tx_buffer[2:10])
-        
         try:
             self.serial_device.write(self.tx_buffer)
         except Exception as e:
