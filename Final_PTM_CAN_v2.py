@@ -92,6 +92,7 @@ class MotorController:
         self.rx_buffer = bytes()
         self.running = False
         self.rx_thread = None
+        self.last_tx_data = {}  # Track last sent data per motor ID to filter echo
 
         self.tx_buffer = bytearray([
             0xAA, 0x01,
@@ -133,7 +134,7 @@ class MotorController:
     
     def _can_receive_loop(self):
         """Background thread to read CAN feedback from motor"""
-        print("[CAN RX] Listening for motor feedback...")
+        print("[CAN RX] Listening for motor feedback on ID 0x00...")
         while self.running:
             try:
                 msg = self.can_bus.recv(timeout=0.01)
@@ -141,38 +142,55 @@ class MotorController:
                     # Print ALL CAN messages received
                     print(f"[CAN RX] ID: 0x{msg.arbitration_id:03X} ({msg.arbitration_id}) | Data: {' '.join([f'{b:02X}' for b in msg.data])}")
                     
-                    if msg.arbitration_id in self.motors:
+                    # Motor feedback comes on ID 0x00 (per Motorevo manual)
+                    if msg.arbitration_id == 0x00:
                         self._process_can_feedback(msg)
+                    elif msg.arbitration_id in [m.id for m in self.motors.values()]:
+                        # Echo of our command - ignore
+                        last_tx = self.last_tx_data.get(msg.arbitration_id)
+                        if last_tx and msg.data == last_tx:
+                            print(f"  └─ ECHO on motor ID (ignored)")
                     else:
-                        print(f"  └─ Unknown motor ID (registered motors: {list(self.motors.keys())})")
+                        print(f"  └─ Unknown CAN ID")
             except Exception as e:
                 if str(e) != "Receive timeout":
                     print(f"[CAN RX ERROR] {e}")
                 pass
     
     def _process_can_feedback(self, msg):
-        """Process CAN feedback message from motor"""
-        motor = self.motors.get(msg.arbitration_id)
-        if not motor or len(msg.data) < 8:
+        """Process CAN feedback message from motor (ID 0x00)"""
+        if len(msg.data) < 8:
             print(f"  └─ Invalid data length: {len(msg.data)} bytes")
             return
         
         data = msg.data
-        status_words = data[0]
+        motor_id = data[0]  # Byte 0 contains motor ID
+        
+        # Find motor by ID
+        motor = self.motors.get(motor_id)
+        if not motor:
+            print(f"  └─ Feedback from unknown motor ID {motor_id}")
+            return
+        
+        # Parse feedback (Bytes 1-7)
         q_uint = (data[1] << 8) | data[2]
-        dq_uint = (data[3] << 4) | (data[4] >> 4)
-        tau_uint = ((data[4] & 0x0F) << 8) | data[5]
+        dq_high = data[3]
+        dq_low_tau_high = data[4]
+        tau_low = data[5]
+        
+        dq_uint = (dq_high << 4) | (dq_low_tau_high >> 4)
+        tau_uint = ((dq_low_tau_high & 0x0F) << 8) | tau_low
         
         recv_q = uint_to_float(q_uint, motor.Q_MIN, motor.Q_MAX, 16)
         recv_dq = uint_to_float(dq_uint, motor.DQ_MIN, motor.DQ_MAX, 12)
         recv_tau = uint_to_float(tau_uint, motor.TAU_MIN, motor.TAU_MAX, 12)
         
-        error_code = data[6]
-        temperature = data[7]
+        temperature = data[6]
+        error_code = data[7]
         
-        print(f"  └─ Parsed: Pos={recv_q:.3f} Vel={recv_dq:.3f} Tau={recv_tau:.3f} Temp={temperature}°C")
+        print(f"  └─ Motor {motor_id} FEEDBACK: Pos={recv_q:.3f} Vel={recv_dq:.3f} Tau={recv_tau:.3f} Temp={temperature}°C Err={error_code}")
         
-        motor.get_data(status_words, recv_q, recv_dq, recv_tau, temperature, error_code)
+        motor.get_data(0, recv_q, recv_dq, recv_tau, temperature, error_code)
 
     # Zero Position Command
     def set_zero_position(self, motor: Motor):
@@ -272,6 +290,10 @@ class MotorController:
         self.tx_buffer[13] = (motor_id >> 24) & 0xFF
 
         self.tx_buffer[2:10] = data[:8] if len(data) >= 8 else (data + bytes(8 - len(data)))
+        
+        # Track last sent data to filter echo
+        self.last_tx_data[motor_id] = bytes(self.tx_buffer[2:10])
+        
         try:
             self.serial_device.write(self.tx_buffer)
         except Exception as e:
