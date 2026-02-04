@@ -267,7 +267,6 @@ class MotorController:
         ])
 
         self.__send_data(motor.id, data_buff)
-        self.poll()  # Poll for immediate response
         sleep(0.001)
 
     # Low-level TX/RX
@@ -301,7 +300,7 @@ class CANMotorSender:
     def __init__(self, can_bus):
         self.can_bus = can_bus
         self.is_open = True
-        self.debug = False  # Disable verbose CAN TX logging
+        self.debug = True  # Enable debug to see commands
     
     def open(self):
         """Dummy method to match serial interface"""
@@ -328,6 +327,10 @@ class CANMotorSender:
                 self.can_bus.send(msg)
             except Exception as e:
                 print(f"[CAN TX ERROR] {e}")
+    
+    def read_all(self):
+        """Dummy method - CAN wrapper doesn't support reading"""
+        return b''
     
     def close(self):
         self.is_open = False
