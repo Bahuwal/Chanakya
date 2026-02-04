@@ -85,11 +85,14 @@ class Motor:
 
 
 class MotorController:
-    def __init__(self, serial_device):
-        """Initialize with serial device for commands or feedback"""
+    def __init__(self, serial_device, can_bus=None):
+        """Initialize with serial device and optional CAN bus for feedback"""
         self.serial_device = serial_device
+        self.can_bus = can_bus
         self.motors = dict()
         self.rx_buffer = bytes()
+        self.running = False
+        self.rx_thread = None
 
         self.tx_buffer = bytearray([
             0xAA, 0x01,
@@ -114,8 +117,61 @@ class MotorController:
     def add_motor(self, motor: Motor):
         self.motors[motor.id] = motor
     
+    def start_can_feedback(self):
+        """Start CAN feedback reading thread"""
+        if not self.can_bus or self.running:
+            return
+        self.running = True
+        self.rx_thread = threading.Thread(target=self._can_receive_loop, daemon=True)
+        self.rx_thread.start()
+        print("✓ CAN feedback receiver started")
+    
+    def stop_can_feedback(self):
+        """Stop CAN feedback reading"""
+        self.running = False
+        if self.rx_thread:
+            self.rx_thread.join(timeout=1.0)
+    
+    def _can_receive_loop(self):
+        """Background thread to read CAN feedback from motor"""
+        print("[CAN RX] Listening for motor feedback...")
+        
+        while self.running:
+            try:
+                msg = self.can_bus.recv(timeout=0.01)
+                if msg and msg.arbitration_id in self.motors:
+                    self._process_can_feedback(msg)
+            except Exception as e:
+                if "timeout" not in str(e).lower():
+                    print(f"[CAN RX ERROR] {e}")
+    
+    def _process_can_feedback(self, msg):
+        """Process CAN feedback message from motor"""
+        motor = self.motors.get(msg.arbitration_id)
+        if not motor or len(msg.data) < 8:
+            return
+        
+        data = msg.data
+        
+        # Parse feedback - same format as command
+        status_word = data[0]
+        q_uint = (data[1] << 8) | data[2]
+        dq_uint = (data[3] << 4) | (data[4] >> 4)
+        tau_uint = ((data[4] & 0x0F) << 8) | data[5]
+        temperature = data[6]
+        error_code = data[7]
+        
+        # Convert to floats
+        recv_q = uint_to_float(q_uint, motor.Q_MIN, motor.Q_MAX, 16)
+        recv_dq = uint_to_float(dq_uint, motor.DQ_MIN, motor.DQ_MAX, 12)
+        recv_tau = uint_to_float(tau_uint, motor.TAU_MIN, motor.TAU_MAX, 12)
+        
+        # Update motor state
+        motor.get_data(status_word, recv_q, recv_dq, recv_tau, temperature, error_code)
+    
+    # Param port feedback methods (for serial/USB mode)
     def poll(self):
-        """Poll serial device for feedback (param port only)"""
+        """Public method to poll serial device and process incoming frames (param port mode)"""
         if not self.motors:
             try:
                 self.__recv_data("REVO", 0)
@@ -127,16 +183,15 @@ class MotorController:
                     self.__recv_data(motor.type, mid)
                 except Exception:
                     pass
-    
+
     def __recv_data(self, type, motor_id):
-        """Receive and process 12-byte feedback frames from param port"""
         try:
             data_recv = b''.join([self.rx_buffer, self.serial_device.read_all()])
         except Exception:
             return
-        
+
         packets = self.__extract_packets(data_recv, type, motor_id)
-        
+
         # Handle remainder bytes
         frame_length = 12
         if len(data_recv) >= frame_length:
@@ -144,47 +199,45 @@ class MotorController:
             self.rx_buffer = data_recv[-remainder_pos:] if remainder_pos else b''
         else:
             self.rx_buffer = data_recv
-        
+
         for packet in packets:
             data = packet[0:8]
             CANID = (packet[11] << 24) | (packet[10] << 16) | (packet[9] << 8) | packet[8]
             self.__process_packet(data, CANID, type)
-    
+
     def __extract_packets(self, data, type, CANID):
-        """Extract 12-byte feedback packets matching motor ID"""
         frames = []
         tail1 = (CANID >> 24) & 0xFF
         tail2 = (CANID >> 16) & 0xFF
         tail3 = (CANID >> 8) & 0xFF
         tail4 = CANID & 0xFF
         tail = [tail4, tail3, tail2, tail1]
-        
+
         frame_length = 12
         i = 0
-        
+
         while i <= len(data) - frame_length:
             if list(data[i+8:i+12]) == tail:
                 frames.append(data[i:i+frame_length])
                 i += frame_length
             else:
                 i += 1
-        
+
         return frames
-    
+
     def __process_packet(self, data, CANID, type):
-        """Process 8-byte feedback data from USB param port"""
         if CANID != 0x00 and CANID in self.motors:
             if type == "REVO":
                 status_words = data[0]
                 q_uint = (data[1] << 8) | data[2]
                 dq_uint = (data[3] << 4) | (data[4] >> 4)
                 tau_uint = ((data[4] & 0x0F) << 8) | data[5]
-                
+
                 motor = self.motors[CANID]
                 recv_q = uint_to_float(q_uint, motor.Q_MIN, motor.Q_MAX, 16)
                 recv_dq = uint_to_float(dq_uint, motor.DQ_MIN, motor.DQ_MAX, 12)
                 recv_tau = uint_to_float(tau_uint, motor.TAU_MIN, motor.TAU_MAX, 12)
-                
+
                 error_code = data[6]
                 temperature = data[7]
                 motor.get_data(status_words, recv_q, recv_dq, recv_tau, temperature, error_code)
@@ -337,42 +390,6 @@ class CANMotorSender:
 
 
 
-# Helper: USB config loader
-def load_usb_config(path="usb.json"):
-    default = {
-        "param_port": "/dev/ttyACM0",
-        "baudrate": 921600
-    }
-    if os.path.exists(path):
-        try:
-            with open(path, "r") as f:
-                cfg = json.load(f)
-            param_port = cfg.get("param_port", default["param_port"])
-            baudrate = int(cfg.get("baudrate", default["baudrate"]))
-            return param_port, baudrate
-        except Exception as e:
-            print(f"[load_usb_config] failed to parse {path}: {e}. Using defaults.")
-            return default["param_port"], default["baudrate"]
-    else:
-        print(f"[load_usb_config] {path} not found. Using defaults.")
-        return default["param_port"], default["baudrate"]
-
-
-# Param polling thread 
-def start_param_polling(param_controller: MotorController, poll_interval=0.005, stop_event=None):
-    """Start background thread to continuously poll parameter feedback."""
-    def run():
-        while not (stop_event and stop_event.is_set()):
-            try:
-                param_controller.poll()
-            except Exception:
-                pass
-            sleep(poll_interval)
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
-    return t
-
-
 # MAIN TEST LOOP
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
@@ -408,12 +425,9 @@ if __name__ == "__main__":
 
     plt.tight_layout()
 
-    # Load USB Config
-    param_port, BAUDRATE = load_usb_config("usb.json")
-    print(f"Using param_port={param_port}, baudrate={BAUDRATE}")
     print(f"Using CAN: can0 @ 1Mbps")
 
-    # Create CAN bus (replaces motor_serial)
+    # Create CAN bus
     try:
         motor_can_bus = can.Bus(channel='can0', interface='socketcan', bitrate=1000000)
         motor_serial = CANMotorSender(motor_can_bus)
@@ -422,32 +436,14 @@ if __name__ == "__main__":
         print(f"[main] Failed to open CAN: {e}")
         raise SystemExit("CAN not available.")
 
-    try:
-        param_serial = serial.Serial(port=param_port, baudrate=BAUDRATE, timeout=0.05)
-    except Exception as e:
-        print(f"[main] Failed to create param_serial on {param_port}: {e}")
-        param_serial = None
-
     # Initialize motor
     revo = Motor("revo_motor", motor_id=3, type_name="REVO")
 
-    # Command controller (sends via CAN wrapper)
-    ctrl = MotorController(motor_serial)
+    # Command controller (sends via CAN, receives feedback via CAN)
+    ctrl = MotorController(motor_serial, can_bus=motor_can_bus)
     ctrl.add_motor(revo)
+    ctrl.start_can_feedback()  # Start reading CAN feedback
     ctrl.motor_mode(revo)
-
-    # Parameter reader controller (reads USB feedback from param port)
-    param_controller = None
-    stop_event = threading.Event()
-    
-    if param_serial is not None:
-        try:
-            param_controller = MotorController(param_serial)
-            param_controller.add_motor(revo)  # Same motor object
-            start_param_polling(param_controller, poll_interval=0.005, stop_event=stop_event)
-            print("✓ Parameter polling thread started.")
-        except Exception as e:
-            print(f"[main] Failed to start param controller: {e}")
 
     # PTM Control parameters
     target_pos = 5.0       # Target position in radians
