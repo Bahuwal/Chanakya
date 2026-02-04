@@ -1,4 +1,5 @@
 from time import sleep
+import time
 import json
 import threading
 import os
@@ -134,63 +135,71 @@ class MotorController:
     
     def _can_receive_loop(self):
         """Background thread to read CAN feedback from motor"""
-        print("[CAN RX] Listening for motor feedback on ID 0x00...")
+        print("[CAN RX] Listening for motor feedback...")
+        last_rx_time = {}  # Track timing to distinguish echo from feedback
+        
         while self.running:
             try:
                 msg = self.can_bus.recv(timeout=0.01)
                 if msg:
-                    # Print ALL CAN messages received
-                    print(f"[CAN RX] ID: 0x{msg.arbitration_id:03X} ({msg.arbitration_id}) | Data: {' '.join([f'{b:02X}' for b in msg.data])}")
+                    arb_id = msg.arbitration_id
+                    now = time.time()
                     
-                    # Motor feedback comes on ID 0x00 (per Motorevo manual)
-                    if msg.arbitration_id == 0x00:
-                        self._process_can_feedback(msg)
-                    elif msg.arbitration_id in [m.id for m in self.motors.values()]:
-                        # Echo of our command - ignore
-                        last_tx = self.last_tx_data.get(msg.arbitration_id)
-                        if last_tx and msg.data == last_tx:
-                            print(f"  └─ ECHO on motor ID (ignored)")
+                    # Check if this is a registered motor
+                    if arb_id in self.motors:
+                        # Calculate time since last RX on this ID
+                        time_since_last = (now - last_rx_time.get(arb_id, 0)) * 1000  # ms
+                        last_rx_time[arb_id] = now
+                        
+                        # Echo: arrives <10ms after TX (hardware loopback)
+                        # Real feedback: arrives >100ms after TX (motor processing time)
+                        if time_since_last < 10:
+                            # Too fast - this is echo/loopback
+                            print(f"[CAN ECHO] ID: 0x{arb_id:03X} | Data: {msg.data.hex()} (Δt={time_since_last:.1f}ms)")
+                        else:
+                            # Real motor feedback!
+                            print(f"[CAN RX] ID: 0x{arb_id:03X} | Data: {msg.data.hex()} (Δt={time_since_last:.1f}ms)")
+                            self._process_can_feedback(msg)
                     else:
-                        print(f"  └─ Unknown CAN ID")
+                        print(f"[CAN RX] Unknown ID: 0x{arb_id:03X} | Data: {msg.data.hex()}")
+                        
             except Exception as e:
-                if str(e) != "Receive timeout":
+                if "Receive timeout" not in str(e):
                     print(f"[CAN RX ERROR] {e}")
                 pass
     
     def _process_can_feedback(self, msg):
-        """Process CAN feedback message from motor (ID 0x00)"""
-        if len(msg.data) < 8:
-            print(f"  └─ Invalid data length: {len(msg.data)} bytes")
+        """Process CAN feedback message from motor"""
+        motor = self.motors.get(msg.arbitration_id)
+        if not motor or len(msg.data) < 8:
             return
         
         data = msg.data
-        motor_id = data[0]  # Byte 0 contains motor ID
         
-        # Find motor by ID
-        motor = self.motors.get(motor_id)
-        if not motor:
-            print(f"  └─ Feedback from unknown motor ID {motor_id}")
-            return
+        # Parse feedback according to PTM format (same as command structure)
+        # Byte 0: Status word
+        # Byte 1-2: Position (16-bit)
+        # Byte 3, 4[7:4]: Velocity (12-bit)
+        # Byte 4[3:0], 5: Torque (12-bit)
+        # Byte 6: Temperature
+        # Byte 7: Error code
         
-        # Parse feedback (Bytes 1-7)
+        status_word = data[0]
         q_uint = (data[1] << 8) | data[2]
-        dq_high = data[3]
-        dq_low_tau_high = data[4]
-        tau_low = data[5]
+        dq_uint = (data[3] << 4) | (data[4] >> 4)
+        tau_uint = ((data[4] & 0x0F) << 8) | data[5]
+        temperature = data[6]
+        error_code = data[7]
         
-        dq_uint = (dq_high << 4) | (dq_low_tau_high >> 4)
-        tau_uint = ((dq_low_tau_high & 0x0F) << 8) | tau_low
-        
+        # Convert to floats
         recv_q = uint_to_float(q_uint, motor.Q_MIN, motor.Q_MAX, 16)
         recv_dq = uint_to_float(dq_uint, motor.DQ_MIN, motor.DQ_MAX, 12)
         recv_tau = uint_to_float(tau_uint, motor.TAU_MIN, motor.TAU_MAX, 12)
         
-        temperature = data[6]
-        error_code = data[7]
+        # Update motor state
+        motor.get_data(status_word, recv_q, recv_dq, recv_tau, temperature, error_code)
         
-        print(f"  └─ Motor {motor_id} FEEDBACK: Pos={recv_q:.3f} Vel={recv_dq:.3f} Tau={recv_tau:.3f} Temp={temperature}°C Err={error_code}")
-        
-        motor.get_data(0, recv_q, recv_dq, recv_tau, temperature, error_code)
+        print(f"  └─ FEEDBACK: Pos={recv_q:6.3f} rad | Vel={recv_dq:6.3f} rad/s | Tau={recv_tau:6.2f} Nm | Temp={temperature}°C | Err=0x{error_code:02X}")
 
     # Zero Position Command
     def set_zero_position(self, motor: Motor):
