@@ -391,11 +391,19 @@ if __name__ == "__main__":
                 iki=iki_gain
             )
 
+            # AUTO ZERO POSITION FEATURE
+            if abs(revo.pos - target_pos) < 0.05:
+                print("Reached target → Zeroing position...")
+                ctrl.set_zero_position(revo)
+                target_pos = 0  # next command is relative
+
             # Print feedback
             print(f"Time: {now:.2f}s | "
                   f"Pos: {revo.pos:6.2f} rad | "
                   f"Vel: {revo.vel:6.2f} rad/s | "
-                  f"Torque: {revo.torque:6.2f} Nm")
+                  f"Torque: {revo.torque:6.2f} Nm | "
+                  f"Temp: {revo.temperature:4.1f}°C | "
+                  f"Err: {revo.error_code}")
 
             # Plotting
             time_data.append(now)
