@@ -153,8 +153,15 @@ class MotorController:
         
         data = msg.data
         
+        # FILTER OUT COMMAND ECHOES!
+        # Real motor feedback starts with 0x02 (motor ID byte)
+        # Command echoes start with 0xE6, 0xFF, 0x7F, etc.
+        if data[0] != 0x02:
+            # This is a command echo, ignore it!
+            return
+        
         # Parse feedback according to manual format
-        # Byte 0: Motor ID (ignore for now)
+        # Byte 0: Motor ID (should be 0x02)
         # Byte 1-2: Position (16-bit)
         # Byte 3 + Byte4[7:4]: Velocity (12-bit)
         # Byte4[3:0] + Byte5: Torque (12-bit)
@@ -173,7 +180,7 @@ class MotorController:
         recv_dq = uint_to_float(dq_uint, motor.DQ_MIN, motor.DQ_MAX, 12)
         recv_tau = uint_to_float(tau_uint, motor.TAU_MIN, motor.TAU_MAX, 12)
         
-        # Update motor state (use actual values, ignore temp/error for now)
+        # Update motor state
         motor.get_data(motor_id_byte, recv_q, recv_dq, recv_tau, temperature, error_code)
 
     # Zero Position Command
