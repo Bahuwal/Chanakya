@@ -166,8 +166,8 @@ class MotorController:
         q_uint = (data[1] << 8) | data[2]
         dq_uint = (data[3] << 4) | (data[4] >> 4)
         tau_uint = ((data[4] & 0x0F) << 8) | data[5]
-        error_code = data[6]      # ← WAS SWAPPED! Error is byte 6
-        temperature = data[7]     # ← WAS SWAPPED! Temp is byte 7
+        error_code = data[6]      # ← FIXED! Error is byte 6
+        temperature = data[7]     # ← FIXED! Temp is byte 7
         
         # Convert to floats
         recv_q = uint_to_float(q_uint, motor.Q_MIN, motor.Q_MAX, 16)
