@@ -176,20 +176,21 @@ class MotorController:
         
         data = msg.data
         
-        # Parse feedback according to PTM format (same as command structure)
-        # Byte 0: Status word
-        # Byte 1-2: Position (16-bit)
-        # Byte 3, 4[7:4]: Velocity (12-bit)
-        # Byte 4[3:0], 5: Torque (12-bit)
-        # Byte 6: Temperature
-        # Byte 7: Error code
+        # FILTER OUT COMMAND ECHOES!
+        # Real motor feedback starts with 0x02 (motor ID byte)
+        # Command echoes start with 0xE6, 0xFF, 0x7F, etc.
+        if data[0] != 0x02:
+            # This is a command echo, ignore it!
+            return
         
+        # Parse feedback according to OFFICIAL Motorevo code (Revo_CAN.py lines 206-222)
+        # This is the CORRECT format verified from working code:
         status_word = data[0]
         q_uint = (data[1] << 8) | data[2]
         dq_uint = (data[3] << 4) | (data[4] >> 4)
         tau_uint = ((data[4] & 0x0F) << 8) | data[5]
-        temperature = data[6]
-        error_code = data[7]
+        error_code = data[6]      # ← FIXED! Error is byte 6
+        temperature = data[7]     # ← FIXED! Temp is byte 7
         
         # Convert to floats
         recv_q = uint_to_float(q_uint, motor.Q_MIN, motor.Q_MAX, 16)
