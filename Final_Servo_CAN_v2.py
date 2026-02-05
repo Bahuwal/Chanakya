@@ -160,20 +160,14 @@ class MotorController:
             # This is a command echo, ignore it!
             return
         
-        # Parse feedback according to manual format
-        # Byte 0: Motor ID (should be 0x02)
-        # Byte 1-2: Position (16-bit)
-        # Byte 3 + Byte4[7:4]: Velocity (12-bit)
-        # Byte4[3:0] + Byte5: Torque (12-bit)
-        # Byte 6: Temperature
-        # Byte 7: Error/packet type
-        
-        motor_id_byte = data[0]
+        # Parse feedback according to OFFICIAL Motorevo code (Revo_CAN.py lines 206-222)
+        # This is the CORRECT format verified from working code:
+        status_words = data[0]
         q_uint = (data[1] << 8) | data[2]
         dq_uint = (data[3] << 4) | (data[4] >> 4)
         tau_uint = ((data[4] & 0x0F) << 8) | data[5]
-        temperature = data[6]
-        error_code = data[7]
+        error_code = data[6]      # ← WAS SWAPPED! Error is byte 6
+        temperature = data[7]     # ← WAS SWAPPED! Temp is byte 7
         
         # Convert to floats
         recv_q = uint_to_float(q_uint, motor.Q_MIN, motor.Q_MAX, 16)
@@ -181,7 +175,7 @@ class MotorController:
         recv_tau = uint_to_float(tau_uint, motor.TAU_MIN, motor.TAU_MAX, 12)
         
         # Update motor state
-        motor.get_data(motor_id_byte, recv_q, recv_dq, recv_tau, temperature, error_code)
+        motor.get_data(status_words, recv_q, recv_dq, recv_tau, temperature, error_code)
 
     # Zero Position Command
     def set_zero_position(self, motor: Motor):
