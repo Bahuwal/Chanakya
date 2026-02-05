@@ -102,19 +102,6 @@ class MotorController:
             0xF4
         ])
 
-        # Close port if already open
-        try:
-            if hasattr(self.serial_device, "is_open") and self.serial_device.is_open:
-                self.serial_device.close()
-        except Exception:
-            pass
-
-        try:
-            self.serial_device.open()
-            print(f"Serial port {getattr(self.serial_device, 'port', '<unknown>')} opened successfully.")
-        except Exception as e:
-            print(f"Error opening serial port: {e}")
-
     def add_motor(self, motor: Motor):
         self.motors[motor.id] = motor
     
