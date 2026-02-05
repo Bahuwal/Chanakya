@@ -153,13 +153,6 @@ class MotorController:
         
         data = msg.data
         
-        # FILTER OUT COMMAND ECHOES!
-        # Real motor feedback starts with 0x02 (motor ID byte)
-        # Command echoes start with 0xE6, 0xFF, 0x7F, etc.
-        if data[0] != 0x02:
-            # This is a command echo, ignore it!
-            return
-        
         # Parse feedback according to OFFICIAL Motorevo code (Revo_CAN.py lines 206-222)
         # This is the CORRECT format verified from working code:
         status_words = data[0]
