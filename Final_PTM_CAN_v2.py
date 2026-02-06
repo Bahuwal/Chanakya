@@ -342,7 +342,7 @@ class CANMotorSender:
 # Helper: USB config loader
 def load_usb_config(path="usb.json"):
     default = {
-        "param_port": "/dev/ttyACM0",
+        "param_port": "/dev/ttyACM3",
         "baudrate": 921600
     }
     if os.path.exists(path):
@@ -446,6 +446,26 @@ if __name__ == "__main__":
     print("Entering motor mode...")
     ctrl.motor_mode(revo)
     sleep(0.2)  # Let mode settle
+    
+    # CRITICAL: Force encoder zero at startup to prevent position persistence
+    print("Clearing encoder position...")
+    ctrl.set_zero_position(revo)
+    sleep(0.5)
+    
+    # Wait for position to actually zero
+    print("Waiting for encoder to zero...", end='', flush=True)
+    timeout = time.time() + 2.0
+    zeroed = False
+    while time.time() < timeout:
+        if abs(revo.pos) < 0.5:  # Position near zero
+            print(f" ✓ Zeroed at {revo.pos:.3f} rad")
+            zeroed = True
+            break
+        sleep(0.1)
+    
+    if not zeroed:
+        print(f" ⚠️ Warning: Position is {revo.pos:.3f} rad (expected ~0)")
+
 
     # Parameter reader controller (reads feedback)
     param_controller = None
@@ -461,11 +481,11 @@ if __name__ == "__main__":
             print(f"[main] Failed to start param controller: {e}")
 
     # PTM Control parameters
-    target_pos = 5.0       # Target position in radians
+    target_pos = 10.0       # Target position in radians
     target_vel = 0.0       # Target velocity (usually 0 for position control)
-    target_torque = 2.0    # Feed-forward torque in Nm (gravity compensation)
+    target_torque = 0.0 #2.0    # Feed-forward torque in Nm (gravity compensation)
     kp_gain = 20.0         # Position control stiffness
-    kd_gain = 0.8          # Position damping
+    kd_gain = 0.3          # Position damping
     
     CONTROL_DURATION = 8
     start = time.time()
