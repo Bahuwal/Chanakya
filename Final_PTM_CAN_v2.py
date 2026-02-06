@@ -260,6 +260,16 @@ class MotorController:
         ])
 
         self.__send_data(motor.id, data_buff)
+        
+        # CRITICAL: Wait for position feedback to update (like serial poll())
+        # This ensures we have fresh data before next iteration
+        old_pos = motor.pos
+        timeout = time.time() + 0.05  # 50ms timeout
+        while time.time() < timeout:
+            if motor.pos != old_pos:  # Position updated by RX thread
+                break
+            sleep(0.001)
+        
         sleep(0.001)
 
     # Low-level TX/RX
@@ -427,7 +437,15 @@ if __name__ == "__main__":
     ctrl = MotorController(motor_serial, can_bus=motor_can_bus)
     ctrl.add_motor(revo)
     ctrl.start_can_feedback()  # Start reading CAN feedback
+    
+    # Enhanced reset sequence (matches working serial code)
+    print("Resetting motor...")
+    ctrl.reset_mode(revo)
+    sleep(0.5)  # Longer wait for full reset
+    
+    print("Entering motor mode...")
     ctrl.motor_mode(revo)
+    sleep(0.2)  # Let mode settle
 
     # Parameter reader controller (reads feedback)
     param_controller = None
