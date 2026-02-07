@@ -1,0 +1,534 @@
+============================================================
+CAN Motor Control - Select Control Mode
+============================================================
+1. Servo Mode (with inner-loop PID)
+   - Uses: kp, kd, ikp, ikd, iki parameters
+   - Best for: Standard position control
+
+2. PTM Mode (Position-Torque Mix)
+   - Uses: kp, kd + feed-forward torque
+   - Best for: Position control with gravity compensation
+   - Formula: T = Kp*(Pref-Pact) + Kd*(Vref-Vact) + Tref
+============================================================
+Enter mode (1 or 2):        
+Invalid choice. Please enter 1 or 2.
+Enter mode (1 or 2): 2
+
+✓ Selected control mode: PTM
+
+============================================================
+CAN Trajectory PD Test - PTM Mode
+============================================================
+Serial port /dev/ttyUSB0 opened.
+⚠ Warning: Failed to open param port /dev/ttyUSB1: [Errno 2] could not open port /dev/ttyUSB1: [Errno 2] No such file or directory: '/dev/ttyUSB1'
+  Feedback will be read from motor port instead
+CANMotorController initialized with 10 motors on /dev/ttyUSB0
+Motor control started
+
+  Control Parameters (from config):
+    Mode: PTM
+    kp  = 20.00
+    kd  = 5.00
+    torque = 0.00 Nm
+    vel = 2.00
+
+    Starting in 2 seconds... (Ctrl+C to abort)
+
+
+📊 Telemetry Publisher configured:
+   Target: udp://localhost:9870
+   Encoding: MessagePack
+   PlotJuggler should listen on UDP port 9870 with MessagePack protocol
+
+Starting control loop... Waiting for commands on UDP:9871
+Press Ctrl+C to stop
+
+[0.1s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.43  0.00  0.06  0.00  0.00] | Published: 4 packets
+[4.1s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 804 packets
+[8.2s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 1604 packets
+[12.2s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 2404 packets
+[16.3s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 3204 packets
+[20.3s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 4004 packets
+[24.4s] pos: [ 0.00  0.00  0.00  0.00  0.00 -0.00  0.00 -0.00  0.00  0.00] | Published: 4804 packets
+[28.4s] pos: [ 0.00  0.00  0.00  0.00  0.00 -0.00  0.00 -0.00  0.00  0.00] | Published: 5604 packets
+^CKeyboard Interrupt!
+Motor serial port closed
+Motor control stopped
+rog@rog-ROG-Strix-G513RW-G513RW:~/dukeHumanoidHardwareControl$ python3 can_trajectory_PD_test.py 
+/home/rog/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+============================================================
+CAN Motor Control - Select Control Mode
+============================================================
+1. Servo Mode (with inner-loop PID)
+   - Uses: kp, kd, ikp, ikd, iki parameters
+   - Best for: Standard position control
+
+2. PTM Mode (Position-Torque Mix)
+   - Uses: kp, kd + feed-forward torque
+   - Best for: Position control with gravity compensation
+   - Formula: T = Kp*(Pref-Pact) + Kd*(Vref-Vact) + Tref
+============================================================
+Enter mode (1 or 2): 2
+
+✓ Selected control mode: PTM
+
+============================================================
+CAN Trajectory PD Test - PTM Mode
+============================================================
+Serial port /dev/ttyUSB0 opened.
+⚠ Warning: Failed to open param port /dev/ttyUSB1: [Errno 2] could not open port /dev/ttyUSB1: [Errno 2] No such file or directory: '/dev/ttyUSB1'
+  Feedback will be read from motor port instead
+CANMotorController initialized with 10 motors on /dev/ttyUSB0
+Motor control started
+
+  Control Parameters (from config):
+    Mode: PTM
+    kp  = 20.00
+    kd  = 5.00
+    torque = 0.00 Nm
+    vel = 2.00
+
+    Starting in 2 seconds... (Ctrl+C to abort)
+
+
+📊 Telemetry Publisher configured:
+   Target: udp://localhost:9870
+   Encoding: MessagePack
+   PlotJuggler should listen on UDP port 9870 with MessagePack protocol
+
+Starting control loop... Waiting for commands on UDP:9871
+Press Ctrl+C to stop
+
+[0.0s] pos: [ 0.00  0.00 -1.06  0.00  0.00  0.00  0.00  2.35  0.00  0.00] | Published: 4 packets
+[4.1s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 804 packets
+[8.1s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 1604 packets
+[12.2s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 2404 packets
+[16.2s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 3204 packets
+[20.3s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 4004 packets
+[24.3s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 4804 packets
+[28.4s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 5604 packets
+[32.4s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 6404 packets
+[36.5s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 7204 packets
+[40.5s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 8004 packets
+^CKeyboard Interrupt!
+Motor serial port closed
+Motor control stopped
+rog@rog-ROG-Strix-G513RW-G513RW:~/dukeHumanoidHardwareControl$ python3 can_trajectory_PD_test.py 
+/home/rog/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+============================================================
+CAN Motor Control - Select Control Mode
+============================================================
+1. Servo Mode (with inner-loop PID)
+   - Uses: kp, kd, ikp, ikd, iki parameters
+   - Best for: Standard position control
+
+2. PTM Mode (Position-Torque Mix)
+   - Uses: kp, kd + feed-forward torque
+   - Best for: Position control with gravity compensation
+   - Formula: T = Kp*(Pref-Pact) + Kd*(Vref-Vact) + Tref
+============================================================
+Enter mode (1 or 2): 2
+
+✓ Selected control mode: PTM
+
+============================================================
+CAN Trajectory PD Test - PTM Mode
+============================================================
+Serial port /dev/ttyUSB0 opened.
+⚠ Warning: Failed to open param port /dev/ttyUSB1: [Errno 2] could not open port /dev/ttyUSB1: [Errno 2] No such file or directory: '/dev/ttyUSB1'
+  Feedback will be read from motor port instead
+CANMotorController initialized with 10 motors on /dev/ttyUSB0
+Motor control started
+
+  Control Parameters (from config):
+    Mode: PTM
+    kp  = 20.00
+    kd  = 5.00
+    torque = 0.00 Nm
+    vel = 2.00
+
+    Starting in 2 seconds... (Ctrl+C to abort)
+
+
+📊 Telemetry Publisher configured:
+   Target: udp://localhost:9870
+   Encoding: MessagePack
+   PlotJuggler should listen on UDP port 9870 with MessagePack protocol
+
+Starting control loop... Waiting for commands on UDP:9871
+Press Ctrl+C to stop
+
+[0.0s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 4 packets
+[4.1s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 804 packets
+[8.1s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 1604 packets
+[12.2s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 2404 packets
+[16.2s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 3204 packets
+[20.3s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 4004 packets
+[CMD] Target position: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00]
+[24.3s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 4804 packets
+[CMD] Target position: [ 0.00  0.00  0.26  0.00  0.00  0.00  0.00 -0.26  0.00  0.00]
+[CMD] Target position: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00]
+[28.4s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 5604 packets
+[CMD] Target position: [ 0.00  0.00  0.26  0.00  0.00  0.00  0.00 -0.26  0.00  0.00]
+[CMD] Target position: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00]
+[32.4s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 6404 packets
+[36.5s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 7204 packets
+[40.5s] pos: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 8004 packets
+^CKeyboard Interrupt!
+Motor serial port closed
+Motor control stopped
+rog@rog-ROG-Strix-G513RW-G513RW:~/dukeHumanoidHardwareControl$ python3 can_trajectory_PD_test.py 
+/home/rog/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+============================================================
+CAN Motor Control - Select Control Mode
+============================================================
+1. Servo Mode (with inner-loop PID)
+   - Uses: kp, kd, ikp, ikd, iki parameters
+   - Best for: Standard position control
+
+2. PTM Mode (Position-Torque Mix)
+   - Uses: kp, kd + feed-forward torque
+   - Best for: Position control with gravity compensation
+   - Formula: T = Kp*(Pref-Pact) + Kd*(Vref-Vact) + Tref
+============================================================
+Enter mode (1 or 2): 2
+
+✓ Selected control mode: PTM
+
+============================================================
+CAN Trajectory PD Test - PTM Mode
+============================================================
+Serial port /dev/ttyUSB0 opened.
+⚠ Warning: Failed to open param port /dev/ttyUSB1: [Errno 2] could not open port /dev/ttyUSB1: [Errno 2] No such file or directory: '/dev/ttyUSB1'
+  Feedback will be read from motor port instead
+CANMotorController initialized with 10 motors on /dev/ttyUSB0
+Motor control started
+
+  Control Parameters (from config):
+    Mode: PTM
+    kp  = 20.00
+    kd  = 5.00
+    torque = 0.00 Nm
+    vel = 2.00
+
+    Starting in 2 seconds... (Ctrl+C to abort)
+
+
+📊 Telemetry Publisher configured:
+   Target: udp://localhost:9870
+   Encoding: MessagePack
+   PlotJuggler should listen on UDP port 9870 with MessagePack protocol
+
+Starting control loop... Waiting for commands on UDP:9871
+Press Ctrl+C to stop
+
+[0.0s] pos: [ 0.00  0.00  0.19  0.00  0.00  0.00  0.00  0.26  0.00  0.00] | Published: 4 packets
+[4.1s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 804 packets
+[8.1s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 1604 packets
+[12.2s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 2404 packets
+[16.2s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 3204 packets
+[20.3s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 4004 packets
+[24.3s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 4804 packets
+[28.4s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 5604 packets
+[32.4s] pos: [ 0.00  0.00  1.54  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 6404 packets
+[36.5s] pos: [ 0.00  0.00  1.54  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 7204 packets
+[40.5s] pos: [ 0.00  0.00  1.54  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 8004 packets
+[CMD] Target position: [ 0.52  0.00  0.00  0.00  0.00 -0.52  0.00  0.00  0.00  0.00]
+[44.6s] pos: [ 0.00  0.00  0.51  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 8804 packets
+[48.6s] pos: [ 0.00  0.00  0.51  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 9604 packets
+[52.7s] pos: [ 0.00  0.00  0.51  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 10404 packets
+[CMD] Target position: [ 0.00  0.00  0.26  0.00  0.00  0.00  0.00 -0.26  0.00  0.00]
+[56.8s] pos: [ 0.00  0.00  0.75  0.00  0.00  0.00  0.00 -0.26  0.00  0.00] | Published: 11204 packets
+[CMD] Target position: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00]
+[60.8s] pos: [ 0.00  0.00  0.51  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 12004 packets
+[CMD] Target position: [ 0.00  0.00  0.26  0.00  0.00  0.00  0.00 -0.26  0.00  0.00]
+[64.9s] pos: [ 0.00  0.00  0.75  0.00  0.00  0.00  0.00 -0.26  0.00  0.00] | Published: 12804 packets
+[CMD] Target position: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00]
+[68.9s] pos: [ 0.00  0.00  0.51  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 13604 packets
+[CMD] Target position: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00]
+[73.0s] pos: [ 0.00  0.00  0.51  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 14404 packets
+[CMD] Target position: [ 0.00  0.00  0.26  0.00  0.00  0.00  0.00 -0.26  0.00  0.00]
+[77.0s] pos: [ 0.00  0.00  0.57  0.00  0.00  0.00  0.00 -0.02  0.00  0.00] | Published: 15204 packets
+[81.1s] pos: [ 0.00  0.00  0.75  0.00  0.00  0.00  0.00 -0.26  0.00  0.00] | Published: 16004 packets
+[CMD] Target position: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00]
+[85.1s] pos: [ 0.00  0.00  0.51  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 16804 packets
+[CMD] Target position: [ 0.00  0.00  0.26  0.00  0.00  0.00  0.00 -0.26  0.00  0.00]
+[89.2s] pos: [ 0.00  0.00  0.75  0.00  0.00  0.00  0.00 -0.26  0.00  0.00] | Published: 17604 packets
+[CMD] Target position: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00]
+[93.2s] pos: [ 0.00  0.00  0.51  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 18404 packets
+[CMD] Target position: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00]
+[CMD] Target position: [ 0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00  0.00]
+[CMD] Target position: [ 0.00  0.00  0.26  0.00  0.00  0.00  0.00 -0.26  0.00  0.00]
+[97.3s] pos: [ 0.00  0.00  0.75  0.00  0.00  0.00  0.00 -0.25  0.00  0.00] | Published: 19204 packets
+[101.3s] pos: [ 0.00  0.00  0.76  0.00  0.00  0.00  0.00 -0.26  0.00  0.00] | Published: 20004 packets
+[105.4s] pos: [ 0.00  0.00  0.76  0.00  0.00  0.00  0.00 -0.26  0.00  0.00] | Published: 20804 packets
+[109.4s] pos: [ 0.00  0.00  0.76  0.00  0.00  0.00  0.00 -0.26  0.00  0.00] | Published: 21604 packets
+^CKeyboard Interrupt!
+Motor serial port closed
+Motor control stopped
+rog@rog-ROG-Strix-G513RW-G513RW:~/dukeHumanoidHardwareControl$ python3 can_trajectory_PD_test.py 
+/home/rog/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+============================================================
+CAN Motor Control - Select Control Mode
+============================================================
+1. Servo Mode (with inner-loop PID)
+   - Uses: kp, kd, ikp, ikd, iki parameters
+   - Best for: Standard position control
+
+2. PTM Mode (Position-Torque Mix)
+   - Uses: kp, kd + feed-forward torque
+   - Best for: Position control with gravity compensation
+   - Formula: T = Kp*(Pref-Pact) + Kd*(Vref-Vact) + Tref
+============================================================
+Enter mode (1 or 2): 2
+
+✓ Selected control mode: PTM
+
+============================================================
+CAN Trajectory PD Test - PTM Mode
+============================================================
+Serial port /dev/ttyUSB0 opened.
+⚠ Warning: Failed to open param port /dev/ttyUSB1: [Errno 2] could not open port /dev/ttyUSB1: [Errno 2] No such file or directory: '/dev/ttyUSB1'
+  Feedback will be read from motor port instead
+CANMotorController initialized with 10 motors on /dev/ttyUSB0
+Motor control started
+
+  Control Parameters (from config):
+    Mode: PTM
+    kp  = 20.00
+    kd  = 5.00
+    torque = 0.00 Nm
+    vel = 2.00
+
+    Starting in 2 seconds... (Ctrl+C to abort)
+
+
+📊 Telemetry Publisher configured:
+   Target: udp://localhost:9870
+   Encoding: MessagePack
+   PlotJuggler should listen on UDP port 9870 with MessagePack protocol
+
+Starting control loop... Waiting for commands on UDP:9871
+Press Ctrl+C to stop
+
+[0.0s] pos: [ 0.00  0.00  0.76  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 4 packets
+[4.1s] pos: [ 0.00  0.00  1.45  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 804 packets
+[8.1s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 1604 packets
+[12.2s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 2404 packets
+[16.2s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 3204 packets
+[20.3s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 4004 packets
+[24.3s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 4804 packets
+[28.4s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 5604 packets
+[32.4s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 6404 packets
+[36.5s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 7204 packets
+[40.5s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 8004 packets
+[44.6s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 8804 packets
+[48.6s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 9604 packets
+[52.7s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 10404 packets
+[56.7s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 11204 packets
+[60.8s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 12004 packets
+[64.8s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 12804 packets
+[68.9s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 13604 packets
+[73.0s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 14404 packets
+[77.0s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 15204 packets
+[81.1s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 16004 packets
+^CKeyboard Interrupt!
+Motor serial port closed
+Motor control stopped
+rog@rog-ROG-Strix-G513RW-G513RW:~/dukeHumanoidHardwareControl$ python3 can_trajectory_PD_test.py 
+/home/rog/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+============================================================
+CAN Motor Control - Select Control Mode
+============================================================
+1. Servo Mode (with inner-loop PID)
+   - Uses: kp, kd, ikp, ikd, iki parameters
+   - Best for: Standard position control
+
+2. PTM Mode (Position-Torque Mix)
+   - Uses: kp, kd + feed-forward torque
+   - Best for: Position control with gravity compensation
+   - Formula: T = Kp*(Pref-Pact) + Kd*(Vref-Vact) + Tref
+============================================================
+Enter mode (1 or 2): 2
+
+✓ Selected control mode: PTM
+
+============================================================
+CAN Trajectory PD Test - PTM Mode
+============================================================
+Serial port /dev/ttyUSB0 opened.
+⚠ Warning: Failed to open param port /dev/ttyUSB1: [Errno 2] could not open port /dev/ttyUSB1: [Errno 2] No such file or directory: '/dev/ttyUSB1'
+  Feedback will be read from motor port instead
+CANMotorController initialized with 10 motors on /dev/ttyUSB0
+Motor control started
+
+  Control Parameters (from config):
+    Mode: PTM
+    kp  = 20.00
+    kd  = 5.00
+    torque = 0.00 Nm
+    vel = 2.00
+
+    Starting in 2 seconds... (Ctrl+C to abort)
+
+
+📊 Telemetry Publisher configured:
+   Target: udp://localhost:9870
+   Encoding: MessagePack
+   PlotJuggler should listen on UDP port 9870 with MessagePack protocol
+
+Starting control loop... Waiting for commands on UDP:9871
+Press Ctrl+C to stop
+
+[0.0s] pos: [ 0.00  0.00  1.45  0.00  0.00  0.00  0.00  0.26  0.00  0.00] | Published: 4 packets
+[4.1s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 804 packets
+[8.1s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 1604 packets
+[12.2s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 2404 packets
+[16.2s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 3204 packets
+[20.3s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 4004 packets
+[24.3s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 4804 packets
+[28.4s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 5604 packets
+[32.4s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 6404 packets
+[36.5s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 7204 packets
+[40.5s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 8004 packets
+[44.6s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 8804 packets
+[48.6s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 9604 packets
+[52.7s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 10404 packets
+[56.7s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 11204 packets
+[60.8s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 12004 packets
+[64.8s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 12804 packets
+[68.9s] pos: [ 0.00  0.00  1.46  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 13604 packets
+^CKeyboard Interrupt!
+Motor serial port closed
+Motor control stopped
+rog@rog-ROG-Strix-G513RW-G513RW:~/dukeHumanoidHardwareControl$ python3 can_trajectory_PD_test.py 
+/home/rog/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+============================================================
+CAN Motor Control - Select Control Mode
+============================================================
+1. Servo Mode (with inner-loop PID)
+   - Uses: kp, kd, ikp, ikd, iki parameters
+   - Best for: Standard position control
+
+2. PTM Mode (Position-Torque Mix)
+   - Uses: kp, kd + feed-forward torque
+   - Best for: Position control with gravity compensation
+   - Formula: T = Kp*(Pref-Pact) + Kd*(Vref-Vact) + Tref
+============================================================
+Enter mode (1 or 2): 1
+
+✓ Selected control mode: SERVO
+
+============================================================
+CAN Trajectory PD Test - SERVO Mode
+============================================================
+Serial port /dev/ttyUSB0 opened.
+⚠ Warning: Failed to open param port /dev/ttyUSB1: [Errno 2] could not open port /dev/ttyUSB1: [Errno 2] No such file or directory: '/dev/ttyUSB1'
+  Feedback will be read from motor port instead
+CANMotorController initialized with 10 motors on /dev/ttyUSB0
+Motor control started
+
+  Control Parameters (from config):
+    Mode: SERVO
+    kp  = 20.00
+    kd  = 5.00
+    ikp = 50.00
+    ikd = 0.01
+    vel = 2.00
+
+    Starting in 2 seconds... (Ctrl+C to abort)
+
+
+📊 Telemetry Publisher configured:
+   Target: udp://localhost:9870
+   Encoding: MessagePack
+   PlotJuggler should listen on UDP port 9870 with MessagePack protocol
+
+Starting control loop... Waiting for commands on UDP:9871
+Press Ctrl+C to stop
+
+[0.0s] pos: [ 0.00  0.00 -12.50  0.00  0.00  0.00  0.00 -0.00  0.00  0.00] | Published: 4 packets
+[4.1s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 804 packets
+[8.1s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 1604 packets
+^CKeyboard Interrupt!
+Motor serial port closed
+Motor control stopped
+rog@rog-ROG-Strix-G513RW-G513RW:~/dukeHumanoidHardwareControl$ ^C
+rog@rog-ROG-Strix-G513RW-G513RW:~/dukeHumanoidHardwareControl$ python3 can_trajectory_PD_test.py
+/home/rog/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+============================================================
+CAN Motor Control - Select Control Mode
+============================================================
+1. Servo Mode (with inner-loop PID)
+   - Uses: kp, kd, ikp, ikd, iki parameters
+   - Best for: Standard position control
+
+2. PTM Mode (Position-Torque Mix)
+   - Uses: kp, kd + feed-forward torque
+   - Best for: Position control with gravity compensation
+   - Formula: T = Kp*(Pref-Pact) + Kd*(Vref-Vact) + Tref
+============================================================
+Enter mode (1 or 2): 1
+
+✓ Selected control mode: SERVO
+
+============================================================
+CAN Trajectory PD Test - SERVO Mode
+============================================================
+Serial port /dev/ttyUSB0 opened.
+⚠ Warning: Failed to open param port /dev/ttyUSB1: [Errno 2] could not open port /dev/ttyUSB1: [Errno 2] No such file or directory: '/dev/ttyUSB1'
+  Feedback will be read from motor port instead
+CANMotorController initialized with 10 motors on /dev/ttyUSB0
+Motor control started
+
+  Control Parameters (from config):
+    Mode: SERVO
+    kp  = 20.00
+    kd  = 5.00
+    ikp = 50.00
+    ikd = 0.01
+    vel = 2.00
+
+    Starting in 2 seconds... (Ctrl+C to abort)
+
+
+📊 Telemetry Publisher configured:
+   Target: udp://localhost:9870
+   Encoding: MessagePack
+   PlotJuggler should listen on UDP port 9870 with MessagePack protocol
+
+Starting control loop... Waiting for commands on UDP:9871
+Press Ctrl+C to stop
+
+[0.0s] pos: [ 0.00  0.00 -12.50  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 4 packets
+	[4.1s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 804 packets
+[8.1s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 1604 packets
+[12.2s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 2404 packets
+[16.2s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 3204 packets
+[20.3s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 4004 packets
+[24.3s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 4804 packets
+[28.4s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 5604 packets
+[32.4s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 6404 packets
+[36.5s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 7204 packets
+[40.5s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 8004 packets
+[44.6s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 8804 packets
+[48.6s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 9604 packets
+[52.7s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 10404 packets
+[56.8s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 11204 packets
+[60.8s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 12004 packets
+[64.9s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 12804 packets
+[68.9s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 13604 packets
+[73.0s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 14404 packets
+[77.0s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 15204 packets
+[81.1s] pos: [ 0.00  0.00  0.12  0.00  0.00  0.00  0.00  0.00  0.00  0.00] | Published: 16004 packets
+^CKeyboard Interrupt!
+Motor serial port closed
+Motor control stopped
+rog@rog-ROG-Strix-G513RW-G513RW:~/dukeHumanoidHardwareControl$ 
