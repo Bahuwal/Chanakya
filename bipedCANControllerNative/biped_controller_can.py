@@ -203,11 +203,12 @@ class BipedController:
         
         self.data_publisher = DataPublisher('udp://localhost:9870',encoding="msgpack",broadcast=False)
         
-        # initialize CAN motors (native SocketCAN)
+        # initialize CAN motors (native SocketCAN + param port for wake-up)
         self.max_torque = 1000.0
         self.motor = CANMotorController(
             can_interface="can0",
             bitrate=1000000,  # 1 Mbps
+            param_port="/dev/ttyACM0",  # Serial port for motor parameter wake-up
             control_mode="ptm",  # or "servo"
             config_path="can_config.yaml"
         )

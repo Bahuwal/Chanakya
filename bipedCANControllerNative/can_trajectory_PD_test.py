@@ -54,10 +54,11 @@ def main():
     print(f"CAN Trajectory PD Test - {control_mode.upper()} Mode (Native SocketCAN)")
     print("=" * 60)
     
-    # Initialize CAN motor controller with native CAN
+    # Initialize CAN motor controller with native CAN + optional param port
     motor = CANMotorController(
         can_interface=CAN_INTERFACE,
         bitrate=1000000,  # 1 Mbps
+        param_port="/dev/ttyACM0",  # Optional: for motor wake-up initialization
         config_path="can_config.yaml",
         control_mode=control_mode
     )

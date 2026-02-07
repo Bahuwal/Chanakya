@@ -1,8 +1,11 @@
 # CAN Motor Configuration for Native SocketCAN
 
-# Native CAN settings (replaces serial/USB adapter)
+# Native CAN settings (for live motor commands and feedback)
 can_interface: "can0"  # Linux SocketCAN interface  
 can_bitrate: 1000000   # 1 Mbps (1000000 bps)
+
+# Parameter port for motor wake-up initialization (via Jason USB adapter)
+param_port: "/dev/ttyACM0"  # Serial port for motor wake-up at startup
 
 # Motor ID mapping (array index 0-9 to CAN motor ID)
 # Index 0-4: Left leg (hip pitch, hip roll, hip yaw, knee, ankle)

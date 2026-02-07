@@ -14,8 +14,6 @@ import signal
 import numpy as np
 import json
 import serial
-import can  # Native CAN bus support
-import time  # For timeout handling
 
 try:
     import yaml
@@ -91,56 +89,33 @@ class Motor:
 
 
 class LowLevelCANController:
-    """Dual-mode CAN controller supporting both native CAN bus and serial devices.
+    """Low-level CAN motor controller for serial communication."""
     
-    Auto-detects device type:
-    - can.Bus → Native SocketCAN with background RX thread
-    - serial.Serial → Jason USB adapter protocol with polling
-    """
-    
-    def __init__(self, device):
-        """Initialize with either CAN bus or serial device.
-        
-        Args:
-            device: Either can.Bus (for native CAN) or serial.Serial (for Jason USB adapter)
-        """
+    def __init__(self, serial_device):
+        self.serial_device = serial_device
         self.motors = dict()
-        
-        # Auto-detect device type
-        if isinstance(device, can.Bus):
-            # NATIVE CAN MODE
-            self.mode = 'can'
-            self.can_bus = device
-            self.running = False
-            self.rx_thread = None
-            print(f"  LowLevelCANController: CAN mode")
-            
-        else:  # serial.Serial
-            # SERIAL MODE (for param port)
-            self.mode = 'serial'
-            self.serial_device = device
-            self.rx_buffer = bytes()
+        self.rx_buffer = bytes()
 
-            # TX buffer format for Motorevo protocol
-            self.tx_buffer = bytearray([
-                0xAA, 0x01,  # Header
-                0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC,  # Data (8 bytes)
-                0x00, 0x00, 0x00, 0x00,  # Motor ID (4 bytes)
-                0xF4  # Tail
-            ])
+        # TX buffer format for Motorevo protocol
+        self.tx_buffer = bytearray([
+            0xAA, 0x01,  # Header
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC,  # Data (8 bytes)
+            0x00, 0x00, 0x00, 0x00,  # Motor ID (4 bytes)
+            0xF4  # Tail
+        ])
 
-            # Open serial port
-            try:
-                if hasattr(self.serial_device, "is_open") and self.serial_device.is_open:
-                    self.serial_device.close()
-            except Exception:
-                pass
+        # Open serial port
+        try:
+            if hasattr(self.serial_device, "is_open") and self.serial_device.is_open:
+                self.serial_device.close()
+        except Exception:
+            pass
 
-            try:
-                self.serial_device.open()
-                print(f"  LowLevelCANController: Serial mode on {getattr(self.serial_device, 'port', '<unknown>')}")
-            except Exception as e:
-                print(f"  Error opening serial port: {e}")
+        try:
+            self.serial_device.open()
+            print(f"Serial port {getattr(self.serial_device, 'port', '<unknown>')} opened.")
+        except Exception as e:
+            print(f"Error opening serial port: {e}")
 
     def add_motor(self, motor: Motor):
         self.motors[motor.id] = motor
@@ -248,37 +223,19 @@ class LowLevelCANController:
         self._send_data(motor_id, data_buff)
 
     def _send_data(self, motor_id, data):
-        """Send command - routes based on mode."""
-        
-        if self.mode == 'can':
-            # NATIVE CAN MODE: Send as CAN message
-            msg = can.Message(
-                arbitration_id=motor_id,
-                data=data[:8],
-                is_extended_id=False
-            )
-            try:
-                self.can_bus.send(msg)
-            except Exception as e:
-                print(f"CAN TX error: {e}")
-        
-        else:  # serial mode
-            # SERIAL MODE: Use Jason USB protocol wrapper
-            self.tx_buffer[10] = motor_id & 0xFF
-            self.tx_buffer[11] = (motor_id >> 8) & 0xFF
-            self.tx_buffer[12] = (motor_id >> 16) & 0xFF
-            self.tx_buffer[13] = (motor_id >> 24) & 0xFF
+        self.tx_buffer[10] = motor_id & 0xFF
+        self.tx_buffer[11] = (motor_id >> 8) & 0xFF
+        self.tx_buffer[12] = (motor_id >> 16) & 0xFF
+        self.tx_buffer[13] = (motor_id >> 24) & 0xFF
 
-            self.tx_buffer[2:10] = data[:8] if len(data) >= 8 else (data + bytes(8 - len(data)))
-            try:
-                self.serial_device.write(self.tx_buffer)
-            except Exception as e:
-                print(f"[_send_data] write error: {e}")
+        self.tx_buffer[2:10] = data[:8] if len(data) >= 8 else (data + bytes(8 - len(data)))
+        try:
+            self.serial_device.write(self.tx_buffer)
+        except Exception as e:
+            print(f"[_send_data] write error: {e}")
     
     def _recv_data(self, motor_id):
-        """Receive and process data for a specific motor (serial mode only)."""
-        if self.mode != 'serial':
-            return
+        """Receive and process data for a specific motor (like working code)."""
         data_recv = b''.join([self.rx_buffer, self.serial_device.read_all()])
         frame_length = 12
         i = 0
@@ -294,9 +251,7 @@ class LowLevelCANController:
                 i += 1
 
     def poll(self):
-        """Read and process feedback from all motors (serial mode only)."""
-        if self.mode != 'serial':
-            return
+        """Read and process feedback from all motors."""
         try:
             data_recv = b''.join([self.rx_buffer, self.serial_device.read_all()])
         except Exception:
@@ -345,46 +300,6 @@ class LowLevelCANController:
             
             motor.update_state(status_words, recv_q, recv_dq, recv_tau, temperature, error_code)
 
-    def start_can_feedback(self):
-        """Start background CAN RX thread (CAN mode only)."""
-        if self.mode != 'can':
-            return
-        if self.running:
-            return
-        self.running = True
-        self.rx_thread = threading.Thread(target=self._can_receive_loop, daemon=True)
-        self.rx_thread.start()
-        print("✓ CAN feedback receiver started")
-
-    def _can_receive_loop(self):
-        """Background CAN receiver thread."""
-        while self.running:
-            try:
-                msg = self.can_bus.recv(timeout=0.01)
-                if msg and msg.arbitration_id in self.motors:
-                    self._process_can_feedback(msg)
-            except Exception as e:
-                if "timeout" not in str(e).lower():
-                    print(f"CAN RX error: {e}")
-
-    def _process_can_feedback(self, msg):
-        """Process incoming CAN message and update motor state."""
-        motor = self.motors[msg.arbitration_id]
-        data = msg.data
-        
-        status_words = data[0]
-        q_uint = (data[1] << 8) | data[2]
-        dq_uint = (data[3] << 4) | (data[4] >> 4)
-        tau_uint = ((data[4] & 0x0F) << 8) | data[5]
-        error_code = data[6]
-        temperature = data[7]
-        
-        recv_q = uint_to_float(q_uint, motor.Q_MIN, motor.Q_MAX, 16)
-        recv_dq = uint_to_float(dq_uint, motor.DQ_MIN, motor.DQ_MAX, 12)
-        recv_tau = uint_to_float(tau_uint, motor.TAU_MIN, motor.TAU_MAX, 12)
-        
-        motor.update_state(status_words, recv_q, recv_dq, recv_tau, temperature, error_code)
-
 
 class CANMotorController:
     """
@@ -398,18 +313,18 @@ class CANMotorController:
     - param_port: For reading motor parameters/feedback
     """
     
-    def __init__(self, can_interface="can0", bitrate=1000000, config_path="can_config.yaml",
+    def __init__(self, serial_port="/dev/ttyUSB0", baudrate=921600, config_path="can_config.yaml",
                  param_port=None, control_mode="servo"):
         """
-        Initialize CAN Motor Controller with native SocketCAN.
+        Initialize CAN Motor Controller.
         
         Args:
-            can_interface: CAN interface name for live control (default "can0")
-            bitrate: CAN bitrate in bps (default 1000000 = 1 Mbps)
+            serial_port: Serial port for sending motor commands
+            baudrate: Baud rate (default 921600)
             config_path: Path to configuration YAML file
-            param_port: Optional serial port for motor wake-up initialization.
+            param_port: Optional separate port for reading motor parameters.
                        If None, uses value from config. If config has None/empty,
-                       skips param port initialization.
+                       feedback is read from serial_port.
             control_mode: Control mode - "servo" or "ptm" (default: "servo")
         """
         self.num_dof = 10
@@ -423,33 +338,31 @@ class CANMotorController:
         self._param_port_path = param_port if param_port else self.config_param_port
         self._use_separate_param_port = bool(self._param_port_path)
         
-        # Create native CAN bus for live motor commands and feedback
-        try:
-            self.can_bus = can.Bus(interface='socketcan', channel=can_interface, bitrate=bitrate)
-            print(f"✓ CAN bus '{can_interface}' opened at {bitrate} bps")
-        except Exception as e:
-            print(f"ERROR: Failed to open CAN interface '{can_interface}': {e}")
-            raise
+        # Create motor serial device (for sending commands)
+        self.serial_device = serial.Serial(
+            port=serial_port,
+            baudrate=baudrate,
+            timeout=0.05
+        )
         
-        # Create low-level controller with native CAN (for live control)
-        self._ctrl = LowLevelCANController(self.can_bus)
-        self._ctrl.start_can_feedback()  # Start background CAN RX thread
+        # Create low-level controller for motor commands
+        self._ctrl = LowLevelCANController(self.serial_device)
         
-        # Create param port controller if specified (for motor wake-up initialization)
+        # Create param port controller if specified (for reading feedback)
         self._param_serial = None
         self._param_ctrl = None
         if self._use_separate_param_port:
             try:
                 self._param_serial = serial.Serial(
                     port=self._param_port_path,
-                    baudrate=921600,  # Standard baud rate
+                    baudrate=baudrate,
                     timeout=0.05
                 )
                 self._param_ctrl = LowLevelCANController(self._param_serial)
-                print(f"✓ Param port {self._param_port_path} initialized for motor wake-up")
+                print(f"✓ Param port {self._param_port_path} initialized for reading motor parameters")
             except Exception as e:
                 print(f"⚠ Warning: Failed to open param port {self._param_port_path}: {e}")
-                print("  Skipping param port initialization - motors may need manual wake-up")
+                print("  Feedback will be read from motor port instead")
                 self._use_separate_param_port = False
                 self._param_ctrl = None
         
@@ -513,10 +426,10 @@ class CANMotorController:
         
         if self._use_separate_param_port:
             print(f"CANMotorController initialized with {self.num_dof} motors")
-            print(f"  └── CAN bus (TX+RX): {can_interface}")
-            print(f"  └── Param port (init): {self._param_port_path}")
+            print(f"  └── Motor port (TX): {serial_port}")
+            print(f"  └── Param port (RX): {self._param_port_path}")
         else:
-            print(f"CANMotorController initialized with {self.num_dof} motors on {can_interface}")
+            print(f"CANMotorController initialized with {self.num_dof} motors on {serial_port}")
 
     def _load_config(self, config_path):
         """Load configuration from YAML or JSON file."""
@@ -742,12 +655,14 @@ class CANMotorController:
             self._motor_pos_offset[i] = motor.pos
         print(f"✓ Current motor positions set as reference zero: {[f'{p:.2f}' for p in self._motor_pos_offset]}")
         
-        # Start control thread (sends commands via CAN bus)
+        # Start control thread (sends commands via motor_port)
         self._control_thread = threading.Thread(target=self._control_loop, daemon=True)
         self._control_thread.start()
         
-        # CAN feedback is handled by background RX thread started in __init__
-        # No need for separate poll thread - feedback is async
+        # Start polling thread - ALWAYS poll feedback from motor_port (USB0)
+        # Motor feedback (pos, vel, torque) comes from motor_port during operation
+        self._poll_thread = threading.Thread(target=self._poll_loop, daemon=True)
+        self._poll_thread.start()
         
         sleep(0.1)
         print("Motor control started")
@@ -807,21 +722,17 @@ class CANMotorController:
         self._stop_event.set()
         self.running = False
         
-        # Stop CAN feedback receiver
-        if self._ctrl:
-            self._ctrl.running = False
-        
         # Reset all motors
         for motor in self._motors:
             self._ctrl.reset_mode(motor)
         
-        # Shutdown CAN bus
+        # Close motor serial port
         try:
-            if self.can_bus:
-                self.can_bus.shutdown()
-                print("CAN bus closed")
-        except Exception as e:
-            print(f"Error closing CAN bus: {e}")
+            if self.serial_device.is_open:
+                self.serial_device.close()
+                print("Motor serial port closed")
+        except Exception:
+            pass
         
         # Close param serial port if used
         if self._param_serial:
