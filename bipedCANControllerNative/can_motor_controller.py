@@ -106,8 +106,9 @@ class LowLevelCANController:
         """
         self.motors = dict()
         
-        # Auto-detect device type
-        if isinstance(device, can.Bus):
+        # Auto-detect device type using duck typing
+        # CAN bus has 'recv' method, serial has 'read' method
+        if hasattr(device, 'recv') and hasattr(device, 'send'):
             # NATIVE CAN MODE
             self.mode = 'can'
             self.can_bus = device
