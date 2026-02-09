@@ -22,9 +22,16 @@ import time
 from collections import deque
 import can
 import serial
-import json
 import numpy as np
 from utils import float_to_uint, uint_to_float
+
+# ============================================================
+# CONFIGURATION - Edit this if your param port is different
+# ============================================================
+PARAM_PORT = "/dev/ttyACM0"  # USB serial port for param initialization
+CAN_INTERFACE = "can0"       # CAN interface name
+CAN_BITRATE = 1000000        # 1 Mbps
+# ============================================================
 
 
 class Motor:
@@ -342,13 +349,8 @@ class PTMTuningGUI:
     
     def initialize_hardware(self):
         try:
-            # Load USB config
-            with open("usb.json", "r") as f:
-                usb_config = json.load(f)
-            param_port = usb_config.get("param_port", "/dev/ttyACM0")
-            
             # Create CAN bus
-            can_bus = can.Bus(channel='can0', interface='socketcan', bitrate=1000000)
+            can_bus = can.Bus(channel=CAN_INTERFACE, interface='socketcan', bitrate=CAN_BITRATE)
             motor_serial = CANMotorSender(can_bus)
             
             # Create motor and controller
@@ -358,7 +360,7 @@ class PTMTuningGUI:
             self.ctrl.add_motor(self.motor)
             self.ctrl.start_can_feedback()
             
-            self.update_status("Hardware initialized\nCAN: can0 @ 1Mbps\nReady")
+            self.update_status(f"Hardware initialized\nCAN: {CAN_INTERFACE} @ {CAN_BITRATE} bps\nParam: {PARAM_PORT}\nReady")
         except Exception as e:
             messagebox.showerror("Hardware Error", f"Failed to initialize hardware:\n{e}")
             self.update_status(f"ERROR: {e}")
