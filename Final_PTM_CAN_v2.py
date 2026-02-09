@@ -260,17 +260,7 @@ class MotorController:
         ])
 
         self.__send_data(motor.id, data_buff)
-        
-        # CRITICAL: Wait for position feedback to update (like serial poll())
-        # This ensures we have fresh data before next iteration
-        old_pos = motor.pos
-        timeout = time.time() + 0.05  # 50ms timeout
-        while time.time() < timeout:
-            if motor.pos != old_pos:  # Position updated by RX thread
-                break
-            sleep(0.001)
-        
-        sleep(0.001)
+        sleep(0.001)  # Fixed 1ms delay for command processing
 
     # Low-level TX/RX
     def __control_cmd(self, motor, cmd):
@@ -501,8 +491,11 @@ if __name__ == "__main__":
     print(f"Control Formula: T = Kp×(Pref-Pact) + Kd×(Vref-Vact) + Tref")
     print("="*70 + "\n")
 
+    CONTROL_DT = 0.005  # 5ms = 200 Hz (matches bipedCANControllerNative)
+
     try:
         while time.time() - start < CONTROL_DURATION:
+            loop_start = time.time()  # Track loop start for fixed-rate control
             now = time.time() - start
 
             # Send PTM command
@@ -552,7 +545,10 @@ if __name__ == "__main__":
             fig.canvas.draw()
             fig.canvas.flush_events()
 
-            sleep(0.01)
+            # Fixed-rate control: sleep to maintain consistent 5ms loop
+            elapsed = time.time() - loop_start
+            if elapsed < CONTROL_DT:
+                sleep(CONTROL_DT - elapsed)
 
     except KeyboardInterrupt:
         print("\n[INTERRUPTED] User stopped execution.")
