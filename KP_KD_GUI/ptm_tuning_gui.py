@@ -28,7 +28,17 @@ import os
 
 # Import the WORKING motor control backend from Final_PTM_CAN_v2.py
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + '/..')
-from Final_PTM_CAN_v2 import Motor, MotorController
+print(f"[DEBUG] Python path: {sys.path[0]}")
+try:
+    from Final_PTM_CAN_v2 import Motor, MotorController
+    print(f"[DEBUG] ✓ Successfully imported Motor and MotorController")
+    print(f"[DEBUG]   Motor class: {Motor}")
+    print(f"[DEBUG]   MotorController class: {MotorController}")
+except Exception as e:
+    print(f"[DEBUG] ✗ FAILED to import Motor/MotorController: {e}")
+    import traceback
+    traceback.print_exc()
+    raise
 import can
 import serial
 
@@ -219,27 +229,41 @@ class PTMTuningGUI:
         row += 1
     
     def initialize_hardware(self):
+        print(f"[INIT] Starting hardware initialization...")
         try:
             # Create CAN bus for feedback
+            print(f"[INIT] Creating CAN bus: {CAN_INTERFACE} @ {CAN_BITRATE}")
             self.can_bus = can.Bus(channel=CAN_INTERFACE, interface='socketcan', bitrate=CAN_BITRATE)
+            print(f"[INIT] ✓ CAN bus created: {self.can_bus}")
             
             # Open serial port for param initialization (Jason's USB protocol wrapper)
+            print(f"[INIT] Opening param port: {PARAM_PORT}")
             try:
                 self.param_serial = serial.Serial(PARAM_PORT, baudrate=115200, timeout=0.1)
-                print(f"✓ Param port opened: {PARAM_PORT}")
+                print(f"[INIT] ✓ Param port opened: {PARAM_PORT}")
             except Exception as e:
-                print(f"⚠️  Warning: Could not open param port {PARAM_PORT}: {e}")
-                print("   Motor parameter initialization may not work")
+                print(f"[INIT] ⚠️  Warning: Could not open param port {PARAM_PORT}: {e}")
+                print("[INIT]    Motor parameter initialization may not work")
                 self.param_serial = None
             
             # Create motor
             motor_id = self.motor_id_var.get()
+            print(f"[INIT] Creating Motor object with ID={motor_id}")
             self.motor = Motor(motor_id=motor_id, type_name="REVO")
+            print(f"[INIT] ✓ Motor created: {self.motor}")
             
             # Create controller using WORKING backend from Final_PTM_CAN_v2.py
+            print(f"[INIT] Creating MotorController...")
             self.ctrl = MotorController(self.param_serial, can_bus=self.can_bus)
+            print(f"[INIT] ✓ MotorController created: {self.ctrl}")
+            
+            print(f"[INIT] Adding motor to controller...")
             self.ctrl.add_motor(self.motor)
+            print(f"[INIT] ✓ Motor added")
+            
+            print(f"[INIT] Starting CAN feedback thread...")
             self.ctrl.start_can_feedback()
+            print(f"[INIT] ✓ CAN feedback thread started")
             
             self.update_status(f"Hardware initialized\\nCAN: {CAN_INTERFACE} @ {CAN_BITRATE} bps\\nMotor ID: {motor_id}\\nReady")
             print(f"✓ PTM GUI ready with motor ID={motor_id}")
@@ -249,10 +273,14 @@ class PTMTuningGUI:
             print(f"✗ Hardware init failed: {e}")
     
     def cmd_reset(self):
+        print(f"[CMD] Reset button clicked, ctrl={self.ctrl}, motor={self.motor}")
         if self.ctrl and self.motor:
+            print(f"[CMD] Sending reset_mode command to motor ID={self.motor.id}")
             self.ctrl.reset_mode(self.motor)
             self.update_status("Reset command sent")
-            print("[CMD] Reset motor")
+            print("[CMD] ✓ Reset command sent")
+        else:
+            print(f"[CMD] ✗ Cannot send - ctrl or motor is None!")
     
     def cmd_motor_mode(self):
         if self.ctrl and self.motor:
