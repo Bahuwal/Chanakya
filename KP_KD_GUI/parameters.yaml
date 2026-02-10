@@ -1,0 +1,15 @@
+# PTM Control Parameters
+motor_id: 3
+param_port: "/dev/ttyACM0"
+
+# Control Targets
+target_position: 10.0      # radians
+target_velocity: 0.0       # rad/s
+target_torque: 0.0         # Nm (feed-forward)
+
+# Control Gains
+kp: 9.0                    # Position stiffness (0-250)
+kd: 1.0                    # Position damping (0-50)
+
+# Test Duration
+control_duration: 4        # seconds
