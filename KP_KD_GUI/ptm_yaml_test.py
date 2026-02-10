@@ -538,13 +538,6 @@ if __name__ == "__main__":
                 kd=kd_gain,
                 torque=target_torque
             )
-            
-
-            # AUTO ZERO POSITION FEATURE
-            if abs(revo.pos - target_pos) < 0.10:
-                print("Reached target → Zeroing position...")
-                ctrl.set_zero_position(revo)
-                target_pos = 0 
 
             # Print feedback
             print(f"Time: {now:.2f}s | "
