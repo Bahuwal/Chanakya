@@ -53,20 +53,12 @@ class Motor:
 
 
 class MotorController:
-    """Motor control backend (extracted from Final_PTM_CAN_v2.py)"""
-    def __init__(self, serial_device, can_bus=None):
-        self.serial_device = serial_device
+    """Motor control backend - Native CAN version"""
+    def __init__(self, can_bus):
         self.can_bus = can_bus
         self.motors = {}
         self.running = False
         self.rx_thread = None
-        
-        self.tx_buffer = bytearray([
-            0xAA, 0x01,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC,
-            0x00, 0x00, 0x00, 0x00,
-            0xF4
-        ])
     
     def add_motor(self, motor):
         self.motors[motor.id] = motor
@@ -151,26 +143,21 @@ class MotorController:
         self.__send_data(motor_id, data_buff)
     
     def __send_data(self, motor_id, data):
-        self.tx_buffer[10] = motor_id & 0xFF
-        self.tx_buffer[11] = (motor_id >> 8) & 0xFF
-        self.tx_buffer[12] = (motor_id >> 16) & 0xFF
-        self.tx_buffer[13] = (motor_id >> 24) & 0xFF
-        self.tx_buffer[2:10] = data[:8] if len(data) >= 8 else (data + bytes(8 - len(data)))
-        
+        """Send native CAN message directly to motor"""
+        if not self.can_bus:
+            print(f"ERROR: No CAN bus available")
+            return
+            
         try:
-            self.serial_device.write(self.tx_buffer)
+            # Native CAN: arbitration_id = motor ID, data = 8 bytes
+            msg = can.Message(
+                arbitration_id=motor_id,
+                data=data[:8] if len(data) >= 8 else (data + bytes(8 - len(data))),
+                is_extended_id=False
+            )
+            self.can_bus.send(msg)
         except Exception as e:
-            print(f"TX error: {e}")
-
-
-class CANMotorSender:
-    """Wrapper for CAN bus to match serial interface"""
-    def __init__(self, can_bus):
-        self.can_bus = can_bus
-    
-    def write(self, data):
-        # Jason USB protocol wrapper - ignore, just for compatibility
-        pass
+            print(f"[CAN TX ERROR] Motor {motor_id}: {e}")
 
 
 class PTMTuningGUI:
@@ -349,18 +336,17 @@ class PTMTuningGUI:
     
     def initialize_hardware(self):
         try:
-            # Create CAN bus
+            # Create native CAN bus
             can_bus = can.Bus(channel=CAN_INTERFACE, interface='socketcan', bitrate=CAN_BITRATE)
-            motor_serial = CANMotorSender(can_bus)
             
-            # Create motor and controller
+            # Create motor and controller (direct CAN, no wrapper)
             motor_id = self.motor_id_var.get()
             self.motor = Motor(motor_id=motor_id)
-            self.ctrl = MotorController(motor_serial, can_bus=can_bus)
+            self.ctrl = MotorController(can_bus)
             self.ctrl.add_motor(self.motor)
             self.ctrl.start_can_feedback()
             
-            self.update_status(f"Hardware initialized\nCAN: {CAN_INTERFACE} @ {CAN_BITRATE} bps\nParam: {PARAM_PORT}\nReady")
+            self.update_status(f"Hardware initialized\nCAN: {CAN_INTERFACE} @ {CAN_BITRATE} bps\nMotor ID: {motor_id}\nReady")
         except Exception as e:
             messagebox.showerror("Hardware Error", f"Failed to initialize hardware:\n{e}")
             self.update_status(f"ERROR: {e}")
