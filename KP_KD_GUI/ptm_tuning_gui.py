@@ -379,6 +379,14 @@ if __name__ == "__main__":
     import serial
     import time
     
+    # ================================================================
+    # CONFIGURATION - Edit these parameters
+    # ================================================================
+    MOTOR_ID = 3              # Motor CAN ID
+    CAN_INTERFACE = 'can0'    # CAN interface
+    CAN_BITRATE = 1000000     # 1 Mbps
+    # ================================================================
+    
     class PTMGUI:
         def __init__(self, root):
             self.root = root
@@ -450,14 +458,6 @@ if __name__ == "__main__":
             
             # Controls
             row = 0
-            ttk.Label(ctrl_frame, text="Motor ID:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky=tk.W, pady=5)
-            self.motor_id_var = tk.IntVar(value=3)
-            ttk.Entry(ctrl_frame, textvariable=self.motor_id_var, width=15).grid(row=row, column=1)
-            row += 1
-            
-            ttk.Separator(ctrl_frame, orient=tk.HORIZONTAL).grid(row=row, column=0, columnspan=2, sticky=tk.EW, pady=10)
-            row += 1
-            
             ttk.Label(ctrl_frame, text="Targets", font=('Arial', 10, 'bold')).grid(row=row, column=0, columnspan=2)
             row += 1
             
@@ -516,20 +516,18 @@ if __name__ == "__main__":
         
         def initialize_hardware(self):
             try:
-                motor_id = self.motor_id_var.get()
-                
                 # Create CAN bus for motor commands
-                self.motor_can_bus = can.Bus(channel='can0', interface='socketcan', bitrate=1000000)
+                self.motor_can_bus = can.Bus(channel=CAN_INTERFACE, interface='socketcan', bitrate=CAN_BITRATE)
                 self.motor_serial = CANMotorSender(self.motor_can_bus)
                 print(f"✓ CAN opened for motor commands")
                 
                 # Initialize motor controller
-                self.motor = Motor("revo_motor", motor_id=motor_id, type_name="REVO")
+                self.motor = Motor("revo_motor", motor_id=MOTOR_ID, type_name="REVO")
                 self.ctrl = MotorController(self.motor_serial, can_bus=self.motor_can_bus)
                 self.ctrl.add_motor(self.motor)
                 self.ctrl.start_can_feedback()
                 
-                print(f"✓ Hardware ready: Motor ID={motor_id}")
+                print(f"✓ Hardware ready: Motor ID={MOTOR_ID}")
             except Exception as e:
                 print(f"✗ Hardware init failed: {e}")
         
