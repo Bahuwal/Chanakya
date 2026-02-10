@@ -402,6 +402,9 @@ if __name__ == "__main__":
             self.control_running = False
             self.start_time = time.time()
             
+            # Button command state (for continuous sending)
+            self.active_command = None  # 'reset', 'motor_mode', 'zero', or None
+            
             # Plot data
             self.time_data = deque(maxlen=2000)
             self.pos_data = deque(maxlen=2000)
@@ -532,49 +535,58 @@ if __name__ == "__main__":
                 print(f"✗ Hardware init failed: {e}")
         
         def cmd_reset(self):
-            if self.ctrl and self.motor:
-                self.ctrl.reset_mode(self.motor)
-                print("[CMD] Reset")
+            self.active_command = 'reset'
+            print("[CMD] Reset (continuous)")
         
         def cmd_motor_mode(self):
-            if self.ctrl and self.motor:
-                self.ctrl.motor_mode(self.motor)
-                print("[CMD] Motor mode")
+            self.active_command = 'motor_mode'
+            print("[CMD] Motor mode (continuous)")
         
         def cmd_zero(self):
-            if self.ctrl and self.motor:
-                self.ctrl.set_zero_position(self.motor)
-                print("[CMD] Zero position")
+            self.active_command = 'zero'
+            print("[CMD] Zero position (continuous)")
         
         def cmd_start(self):
+            self.active_command = None  # Stop button commands
             self.control_running = True
             self.start_time = time.time()
             print("[CMD] Control started")
         
         def cmd_stop(self):
+            self.active_command = None
             self.control_running = False
             if self.ctrl and self.motor:
                 self.ctrl.PTM_control(self.motor, pos=0, vel=0, kp=0, kd=0, torque=0)
             print("[CMD] Control stopped")
         
         def control_step(self):
-            if not self.control_running or not self.ctrl or not self.motor:
+            if not self.ctrl or not self.motor:
                 return
             
-            # Send PTM command at 200Hz
-            self.ctrl.PTM_control(
-                self.motor,
-                pos=self.target_pos_var.get(),
-                vel=self.target_vel_var.get(),
-                kp=self.kp_var.get(),
-                kd=self.kd_var.get(),
-                torque=self.target_torque_var.get()
-            )
+            # Execute active button command (continuous)
+            if self.active_command == 'reset':
+                self.ctrl.reset_mode(self.motor)
+            elif self.active_command == 'motor_mode':
+                self.ctrl.motor_mode(self.motor)
+            elif self.active_command == 'zero':
+                self.ctrl.set_zero_position(self.motor)
             
-            # Update plot data
-            now = time.time() - self.start_time
-            self.time_data.append(now)
-            self.pos_data.append(self.motor.pos)
+            # Or execute PTM control if running
+            elif self.control_running:
+                # Send PTM command at 200Hz
+                self.ctrl.PTM_control(
+                    self.motor,
+                    pos=self.target_pos_var.get(),
+                    vel=self.target_vel_var.get(),
+                    kp=self.kp_var.get(),
+                    kd=self.kd_var.get(),
+                    torque=self.target_torque_var.get()
+                )
+                
+                # Update plot data
+                now = time.time() - self.start_time
+                self.time_data.append(now)
+                self.pos_data.append(self.motor.pos)
             self.target_pos_data.append(self.target_pos_var.get())
             self.vel_data.append(self.motor.vel)
             self.torque_data.append(self.motor.torque)
@@ -620,9 +632,6 @@ if __name__ == "__main__":
     gui = PTMGUI(root)
     root.protocol("WM_DELETE_WINDOW", gui.on_close)
     root.mainloop()
-
-    # Position plot
-    line_pos, = ax1.plot([], [], 'r-', label='Actual Pos', linewidth=2)
     line_target_pos, = ax1.plot([], [], 'g--', label='Target Pos', linewidth=2)
     ax1.set_ylabel('Position (rad)')
     ax1.legend(loc='upper right')
