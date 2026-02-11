@@ -35,17 +35,19 @@ def main():
     print("=" * 60)
     
     # Initialize CAN motor controller with native CAN
-    # IMPORTANT: Disable background thread to prevent CAN buffer overflow!
-    # This test script manually sends commands, so background thread would create
-    # duplicate TX traffic causing Error 105 (ENOBUFS - no buffer space).
-    # param_port is read from can_config.yaml (defaults to /dev/ttyACM0)
+    # param_port is read from can_config.yaml
     motor = CANMotorController(
         can_interface=CAN_INTERFACE,
         bitrate=1000000,  # 1 Mbps
         config_path="can_config.yaml",
-        control_mode="ptm",
-        enable_background_control=False  # ← Disable background thread for manual control
+        control_mode="ptm"
     )
+    
+    # CRITICAL: Enable position control BEFORE motor.run()
+    # Motors have 100ms watchdog - if they receive zero-gain commands, they timeout!
+    # Background thread needs this flag to send actual control commands
+    motor.use_position_pd = True
+    
     motor.run()
     
     # Set max torque (placeholder - handled internally by motors)
@@ -124,41 +126,10 @@ def main():
             
             # Control loop with decimation
             for _ in range(decimation):
-                # CRITICAL: Manually send CAN commands (background thread is disabled)
-                # Without this, motors receive no commands and will turn off!
-                
-                # Apply ankle coupling if enabled
-                target_motor_pos = dof_pos_target.copy()
-                if motor.ankle_coupling:
-                    target_motor_pos[4] += target_motor_pos[3]  # Left ankle
-                    target_motor_pos[9] += target_motor_pos[8]  # Right ankle
-                
-                # Add position offset (current pos was zeroed at startup)
-                target_motor_pos = target_motor_pos + motor._motor_pos_offset
-                
-                # Send PTM commands to all motors continuously
-                for i, m in enumerate(motor._motors):
-                    if action_is_on[i] > 0.5:
-                        # Active control - send PTM command
-                        motor._ctrl.ptm_control(
-                            m,
-                            pos=target_motor_pos[i],
-                            vel=motor._vel[i],
-                            kp=motor._kp[i],
-                            kd=motor._kd[i],
-                            torque=motor._target_torque[i]
-                        )
-                    else:
-                        # Motor disabled - send zero gains
-                        motor._ctrl.ptm_control(
-                            m,
-                            pos=target_motor_pos[i],
-                            vel=0,
-                            kp=0,
-                            kd=0,
-                            torque=0
-                        )
-                    time.sleep(0.001)  # 1ms between motors (10ms total for 10 motors)
+                # Send position commands
+                motor.use_position_pd = True
+                motor.target_dof_position = dof_pos_target
+                motor.torque_multiplier = action_is_on
                 
                 # Prepare telemetry data
                 data = {
