@@ -91,7 +91,9 @@ class SerialDataCollector:
         self.force_measurement_min = np.ones(4,dtype=np.int32)*5000
 
         #  NOTE: MUST match the actual values of the force sensor at zero contact
-        self.force_measurement_min = np.array([1157,1157,1157,1157])
+        # Calibrated with robot in air (zero load):
+        # Left: Back=1080, Front=1218 | Right: Back=1321, Front=1245
+        self.force_measurement_min = np.array([1080, 1218, 1321, 1245])
         # self.force_measurement_raw_buf = RingArrayBuffer(buffer_len=20,shape=(4,),dtype=int)
         self.force_measurement_threshold = 400
 
@@ -186,14 +188,14 @@ class SerialDataCollector:
             self.force_measurement_raw[:] = self.unpacked[0:4] # 0 is left-back, 1 left-front, 2 right-back, 3 right-front
             self.force_measurement[:] = self.filter_force_measurement.add(self.force_measurement_raw)
             
-            # ========== HARDCODED CONTACT: Both feet always in contact ==========
-            # Uncomment the lines below to use actual load cell threshold-based contact detection
-            # self.contact[0] = (self.force_measurement[0] + self.force_measurement[1]-self.force_measurement_min[0]-self.force_measurement_min[1])>self.force_measurement_threshold 
-            # self.contact[1] = (self.force_measurement[2] + self.force_measurement[3]-self.force_measurement_min[2]-self.force_measurement_min[3])>self.force_measurement_threshold
+            # ========== REAL CONTACT DETECTION (ENABLED) ==========
+            # Using calibrated baselines and 400-count threshold
+            self.contact[0] = (self.force_measurement[0] + self.force_measurement[1] - self.force_measurement_min[0] - self.force_measurement_min[1]) > self.force_measurement_threshold
+            self.contact[1] = (self.force_measurement[2] + self.force_measurement[3] - self.force_measurement_min[2] - self.force_measurement_min[3]) > self.force_measurement_threshold
             
-            # Hardcoded: Always in contact with ground (both feet)
-            self.contact[0] = True  # Left foot always in contact
-            self.contact[1] = True  # Right foot always in contact
+            # Hardcoded: Always in contact with ground (DISABLED - using real detection above)
+            # self.contact[0] = True  # Left foot always in contact
+            # self.contact[1] = True  # Right foot always in contact
             # ====================================================================
             
             self.lin_acc_raw[:] = self.unpacked[4:7]
