@@ -26,41 +26,25 @@ def main():
     CAN_INTERFACE = "can0"
     
     print("=" * 60)
-    print("CAN Motor Control - Select Control Mode")
+    print("CAN Motor Control - PTM Mode (Native SocketCAN)")
     print("=" * 60)
-    print("1. Servo Mode (with inner-loop PID)")
-    print("   - Uses: kp, kd, ikp, ikd, iki parameters")
-    print("   - Best for: Standard position control")
-    print("")
-    print("2. PTM Mode (Position-Torque Mix)")
-    print("   - Uses: kp, kd + feed-forward torque")
-    print("   - Best for: Position control with gravity compensation")
-    print("   - Formula: T = Kp*(Pref-Pact) + Kd*(Vref-Vact) + Tref")
+    print("PTM Mode (Position-Torque Mix)")
+    print("  - Uses: kp, kd + feed-forward torque")
+    print("  - Best for: Position control with gravity compensation")
+    print("  - Formula: T = Kp*(Pref-Pact) + Kd*(Vref-Vact) + Tref")
     print("=" * 60)
     
-    while True:
-        choice = input("Enter mode (1 or 2): ").strip()
-        if choice == "1":
-            control_mode = "servo"
-            break
-        elif choice == "2":
-            control_mode = "ptm"
-            break
-        else:
-            print("Invalid choice. Please enter 1 or 2.")
-    
-    print(f"\n✓ Selected control mode: {control_mode.upper()}\n")
-    print("=" * 60)
-    print(f"CAN Trajectory PD Test - {control_mode.upper()} Mode (Native SocketCAN)")
-    print("=" * 60)
-    
-    # Initialize CAN motor controller with native CAN + optional param port
+    # Initialize CAN motor controller with native CAN
+    # IMPORTANT: Disable background thread to prevent CAN buffer overflow!
+    # This test script manually sends commands, so background thread would create
+    # duplicate TX traffic causing Error 105 (ENOBUFS - no buffer space).
+    # param_port is read from can_config.yaml (defaults to /dev/ttyACM0)
     motor = CANMotorController(
         can_interface=CAN_INTERFACE,
         bitrate=1000000,  # 1 Mbps
-        param_port="/dev/ttyACM0",  # Optional: for motor wake-up initialization
         config_path="can_config.yaml",
-        control_mode=control_mode
+        control_mode="ptm",
+        enable_background_control=False  # ← Disable background thread for manual control
     )
     motor.run()
     
@@ -69,15 +53,10 @@ def main():
     
     # Print control parameters for safety verification
     print(f"\n  Control Parameters (from config):") 
-    print(f"    Mode: {control_mode.upper()}")
+    print(f"    Mode: PTM")
     print(f"    kp  = {motor.kp}")
     print(f"    kd  = {motor.kd}")
-    if control_mode == "servo":
-        print(f"    ikp = {motor._ikp}")
-        print(f"    ikd = {motor._ikd}")
-        print(f"    iki = {motor._iki}")
-    elif control_mode == "ptm":
-        print(f"    torque = {motor.target_torque} Nm")
+    print(f"    torque = {motor.target_torque} Nm")
     print(f"    vel = {motor._vel}")
     
     # Zero all motors - set current position as reference zero
@@ -145,10 +124,41 @@ def main():
             
             # Control loop with decimation
             for _ in range(decimation):
-                # Send position commands
-                motor.use_position_pd = True
-                motor.target_dof_position = dof_pos_target
-                motor.torque_multiplier = action_is_on
+                # CRITICAL: Manually send CAN commands (background thread is disabled)
+                # Without this, motors receive no commands and will turn off!
+                
+                # Apply ankle coupling if enabled
+                target_motor_pos = dof_pos_target.copy()
+                if motor.ankle_coupling:
+                    target_motor_pos[4] += target_motor_pos[3]  # Left ankle
+                    target_motor_pos[9] += target_motor_pos[8]  # Right ankle
+                
+                # Add position offset (current pos was zeroed at startup)
+                target_motor_pos = target_motor_pos + motor._motor_pos_offset
+                
+                # Send PTM commands to all motors continuously
+                for i, m in enumerate(motor._motors):
+                    if action_is_on[i] > 0.5:
+                        # Active control - send PTM command
+                        motor._ctrl.ptm_control(
+                            m,
+                            pos=target_motor_pos[i],
+                            vel=motor._vel[i],
+                            kp=motor._kp[i],
+                            kd=motor._kd[i],
+                            torque=motor._target_torque[i]
+                        )
+                    else:
+                        # Motor disabled - send zero gains
+                        motor._ctrl.ptm_control(
+                            m,
+                            pos=target_motor_pos[i],
+                            vel=0,
+                            kp=0,
+                            kd=0,
+                            torque=0
+                        )
+                    time.sleep(0.001)  # 1ms between motors (10ms total for 10 motors)
                 
                 # Prepare telemetry data
                 data = {
