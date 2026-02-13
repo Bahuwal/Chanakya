@@ -1,0 +1,20 @@
+# PTM Control Parameters for Waveshare USB-CAN-A
+
+# Serial Ports (Windows)
+motor_port: "COM13"        # Main control port (TX)
+param_port: "COM18"        # Parameter read port (RX - optional)
+
+# Motor Configuration
+motor_id: 7
+
+# Control Targets
+target_position: 1.0       # radians
+target_velocity: 0.0       # rad/s
+target_torque: 0.0         # Nm (feed-forward)
+
+# Control Gains (adjust these for tuning)
+kp: 8.0                    # Position stiffness (0-250)
+kd: 0.8                    # Position damping (0-50)
+
+# Test Duration
+control_duration: 8        # seconds

@@ -1,0 +1,75 @@
+# Waveshare USB-CAN-A Configuration for Biped Controller
+
+# Waveshare Serial Ports (Windows)
+motor_port: "COM13"        # Main control port (TX)
+param_port: "COM18"        # Parameter read port (RX - optional)
+
+# Motor ID mapping (array index 0-9 to CAN motor ID)
+# Index 0-4: Left leg (hip pitch, hip roll, hip yaw, knee, ankle)
+# Index 5-9: Right leg (hip pitch, hip roll, hip yaw, knee, ankle)
+motor_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+# Motor position limits (radians) - EXACTLY matching Duke's motor_controller.py
+# Duke's values from motor_controller.py lines 40-41
+min_limit: [-0.7854, -1.2566, -0.3927, -0.3000, -0.6632, -0.7854, -1.2566, -0.6283, -1.0472, -0.6981]
+max_limit: [0.7854, 1.2566, 0.6283, 1.0472, 0.6981, 0.7854, 1.2566, 0.3927, 0.3000, 0.6632]
+
+# Motorevo motor parameter ranges
+# Position range (radians) - as defined in Motor class
+Q_MIN: -12.5
+Q_MAX: 12.5
+
+# Velocity range (rad/s)
+DQ_MIN: -10.0
+DQ_MAX: 10.0
+
+# Torque range (Nm)
+TAU_MIN: -50.0
+TAU_MAX: 50.0
+
+# Outer loop PD gains range
+OKP_MIN: 0.0
+OKP_MAX: 250.0
+OKD_MIN: 0.0
+OKD_MAX: 50.0
+
+# Inner loop PID gains range (specific to Motorevo)
+IKP_MIN: 0.0
+IKP_MAX: 250.0
+IKD_MIN: 0.0
+IKD_MAX: 50.0
+IKI_MIN: 0.0
+IKI_MAX: 50.0
+
+# Default control gains
+default_kp: [8.0, 195.0, 200.0, 120.0, 128.0, 8.0, 195.0, 200.0, 120.0, 128.0]
+default_kd: [0.8, 58.0, 45.0, 20.0, 20.0, 0.8, 58.0, 45.0, 20.0, 20.0]
+default_ikp: [50, 50, 50, 50, 50, 50, 50, 50, 50, 50]
+default_ikd: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+default_iki: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+# Velocity for trajectory tracking (0.0 for position holding, non-zero for trajectory tracking)
+default_vel: 0.0
+
+# Default feed-forward torque per joint (for PTM mode)
+# Set non-zero values for joints requiring gravity compensation
+default_torque: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+# Zero position offset (calibrated at startup)
+# These values are updated by initialize_motor_pos_offset()
+motor_pos_offset: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+# Gear ratios (for torque calculations, matching Duke's setup)
+gear_ratio: [18, 18, 18, 18, 10, 18, 18, 18, 18, 10]
+
+# Default standing pose (from Duke's checkpoint/baseline/config.yaml)
+# Robot's stable standing position used as reference
+default_dof_pos: [0.0, 0.175, 0.1, 0.387, -0.213, 0.0, -0.175, -0.1, -0.387, 0.213]
+
+# Ankle coupling: Set to true if ankle motor position depends on knee position
+# Duke's robot has: motor_ankle = dof_ankle + dof_knee
+ankle_coupling: false
+
+# Control loop timing
+control_dt: 0.005  # 200 Hz control loop
+decimation: 4      # Publish every 4 control cycles (50 Hz)
