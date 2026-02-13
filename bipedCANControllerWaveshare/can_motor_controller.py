@@ -705,6 +705,11 @@ class CANMotorController:
         self._control_thread = threading.Thread(target=self._control_loop, daemon=True)
         self._control_thread.start()
         
+        # Start polling thread - continuously poll feedback from Waveshare port
+        # This is CRITICAL: without continuous polling, motor positions don't update!
+        self._poll_thread = threading.Thread(target=self._poll_loop, daemon=True)
+        self._poll_thread.start()
+        
         sleep(0.1)
         print("✓ Motor control started")
     
