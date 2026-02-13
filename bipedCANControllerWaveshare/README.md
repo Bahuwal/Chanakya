@@ -165,7 +165,7 @@ python3 sshkeyboard_pd_test.py
 ### Motors don't respond:
 - Check serial ports: `ls /dev/tty*`
 - Verify motor IDs are 1-10 (not 0-9)
-- Ensure param_port is reading feedback
+- Check CAN baud rate matches motor configuration (1 Mbps)
 
 ### RL policy unstable:
 - Try increasing kp/kd to Duke's values (80/8)

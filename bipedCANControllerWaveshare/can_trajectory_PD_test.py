@@ -34,7 +34,7 @@ def main():
     print("=" * 60)
     
     # Initialize Waveshare motor controller
-    # motor_port and param_port are read from can_config.yaml
+    # motor_port is read from can_config.yaml
     motor = CANMotorController(
         config_path="can_config.yaml",
         control_mode="ptm"

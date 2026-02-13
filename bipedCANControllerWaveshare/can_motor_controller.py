@@ -267,10 +267,7 @@ class CANMotorController:
     
     This class provides the same interface as Duke's EtherCAT MotorController,
     allowing drop-in replacement for trajectory matching tests.
-    
-    Supports dual-port setup:
-    - motor_port (serial_port): For sending motor commands
-    - param_port: For reading motor parameters/feedback
+    The controller uses a single Waveshare port for both TX and RX.
     """
     
     def __init__(self, motor_port=None, config_path="can_config.yaml", control_mode="servo"):
@@ -685,27 +682,13 @@ class CANMotorController:
         for motor in self._motors:
             self._ctrl.motor_mode(motor)
         
-        # If param_port is configured, read parameters ONCE at startup
-        # This is required to "wake up" Motorevo motors
-        if self._use_separate_param_port and self._param_ctrl:
-            print(f"Reading motor parameters from {self._param_port_path}...")
-            for _ in range(20):  # Poll for ~100ms to read initial parameters
-                try:
-                    self._param_ctrl.poll()
-                except Exception:
-                    pass
-                sleep(0.005)
-            print("✓ Motor parameters read - motors initialized")
-        
-        # Do one final poll to ensure we have the latest motor positions
-        # This prevents race conditions, especially for motor 0 when param port is connected to it
-        if self._use_separate_param_port and self._param_ctrl:
-            for _ in range(5):  # Extra 25ms of polling
-                try:
-                    self._param_ctrl.poll()
-                except Exception:
-                    pass
-                sleep(0.005)
+        # Poll for initial motor feedback
+        for _ in range(20):  # Poll for ~100ms to read initial parameters
+            try:
+                self._ctrl.poll()
+            except Exception:
+                pass
+            sleep(0.005)
         
         # Debug: Print motor positions before setting offsets
         motor_positions = [motor.pos for motor in self._motors]
@@ -875,18 +858,7 @@ class CANMotorController:
             self._ctrl.poll()
             sleep(0.005)
     
-    def _param_poll_loop(self):
-        """Background thread for polling motor feedback from param port.
-        
-        This is the critical loop that reads motor parameters.
-        Motors won't move until their parameters are read!
-        """
-        while not self._stop_event.is_set():
-            try:
-                self._param_ctrl.poll()
-            except Exception:
-                pass
-            sleep(0.005)
+
     
     def set_max_torque(self, max_torques):
         """Set maximum torque for each motor (placeholder for compatibility)."""
@@ -928,22 +900,18 @@ if __name__ == "__main__":
     import argparse
     
     parser = argparse.ArgumentParser(description='Test CAN Motor Controller')
-    parser.add_argument('--motor-port', default='/dev/ttyUSB0', 
-                        help='Serial port for motor commands')
-    parser.add_argument('--param-port', default=None,
-                        help='Serial port for reading motor parameters (optional)')
+    parser.add_argument('--motor-port', dest='motor_port',
+                        help='Serial port for motor control (e.g., COM13 or /dev/ttyUSB0)')
     parser.add_argument('--config', default='can_config.yaml',
                         help='Path to config file')
     args = parser.parse_args()
     
     print("Testing CANMotorController...")
-    print(f"  Motor port: {args.motor_port}")
-    print(f"  Param port: {args.param_port or '(from config or disabled)'}")
+    print(f"  Motor port: {args.motor_port or '(from config)'}")
     
     # Create controller
     motor = CANMotorController(
-        serial_port=args.motor_port,
-        param_port=args.param_port,
+        motor_port=args.motor_port,
         config_path=args.config
     )
     

@@ -203,7 +203,7 @@ class BipedController:
         
         self.data_publisher = DataPublisher('udp://localhost:9870',encoding="msgpack",broadcast=False)
         
-        # Initialize Waveshare CAN motors (reads motor_port/param_port from can_config.yaml)
+        # Initialize Waveshare CAN motors (reads motor_port from can_config.yaml)
         self.max_torque = 1000.0
         self.motor = CANMotorController(
             control_mode="ptm",  # or "servo"
