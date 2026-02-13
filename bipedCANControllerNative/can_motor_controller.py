@@ -399,21 +399,19 @@ class CANMotorController:
     - param_port: For reading motor parameters/feedback
     """
     
-    
     def __init__(self, can_interface="can0", bitrate=1000000, config_path="can_config.yaml",
-                 param_port=None, control_mode="ptm", enable_background_control=True):
+                 param_port=None, control_mode="servo"):
         """
-        Initialize CAN Motor Controller (Native SocketCAN implementation).
+        Initialize CAN Motor Controller with native SocketCAN.
         
         Args:
-            can_interface: CAN interface name (e.g., 'can0')
-            bitrate: CAN bus bitrate (default: 1 Mbps)
+            can_interface: CAN interface name for live control (default "can0")
+            bitrate: CAN bitrate in bps (default 1000000 = 1 Mbps)
             config_path: Path to configuration YAML file
-            param_port: Optional serial port for motor parameter reading (e.g., '/dev/ttyACM0')
-            control_mode: Control mode - 'servo' or 'ptm'
-            enable_background_control: If True, starts background thread for continuous commands.
-                                      Set to False for test scripts that manually control command rate.
-                                      Default True for RL/biped controller compatibility.
+            param_port: Optional serial port for motor wake-up initialization.
+                       If None, uses value from config. If config has None/empty,
+                       skips param port initialization.
+            control_mode: Control mode - "servo" or "ptm" (default: "servo")
         """
         self.num_dof = 10
         self.running = False
@@ -506,7 +504,6 @@ class CANMotorController:
         
         # Control thread
         self._control_thread = None
-        self._enable_background_control = enable_background_control
         
         # Signal handler for clean shutdown
         def signal_handler(sig, frame):
@@ -747,18 +744,14 @@ class CANMotorController:
         print(f"✓ Current motor positions set as reference zero: {[f'{p:.2f}' for p in self._motor_pos_offset]}")
         
         # Start control thread (sends commands via CAN bus)
-        if self._enable_background_control:
-            self._control_thread = threading.Thread(target=self._control_loop, daemon=True)
-            self._control_thread.start()
-            print("✓ Background control thread started (200 Hz)")
-        else:
-            print("✓ Background control disabled - manual control mode")
+        self._control_thread = threading.Thread(target=self._control_loop, daemon=True)
+        self._control_thread.start()
         
         # CAN feedback is handled by background RX thread started in __init__
         # No need for separate poll thread - feedback is async
         
         sleep(0.1)
-        print("Motor control ready")
+        print("Motor control started")
     
     def set_zero_position(self, motor_indices=None):
         """
@@ -1016,4 +1009,3 @@ if __name__ == "__main__":
     
     motor.stop()
     print("Done")
-

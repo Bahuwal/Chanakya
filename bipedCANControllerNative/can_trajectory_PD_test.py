@@ -19,7 +19,6 @@ from publisher import DataPublisher, DataReceiver
 
 pi = np.pi
 
-
 def main():
     # Configure CAN interface - change this to match your system
     # Linux: can0, can1, etc.

@@ -273,14 +273,12 @@ class CANMotorController:
     - param_port: For reading motor parameters/feedback
     """
     
-    def __init__(self, motor_port=None, param_port=None, config_path="can_config.yaml",
-                 control_mode="servo"):
+    def __init__(self, motor_port=None, config_path="can_config.yaml", control_mode="servo"):
         """
         Initialize Waveshare CAN Motor Controller.
         
         Args:
-            motor_port: Serial port for Waveshare TX (default from config)
-            param_port: Optional serial port for Waveshare RX (default from config)
+            motor_port: Serial port for Waveshare communication (default from config)
             config_path: Path to configuration YAML file
             control_mode: Control mode - "servo" or "ptm" (default: "servo")
         """
@@ -291,34 +289,19 @@ class CANMotorController:
         # Load configuration
         self._load_config(config_path)
         
-        # Get ports from config if not provided
+        # Get port from config if not provided
         motor_port = motor_port or self.config_motor_port
-        param_port = param_port or self.config_param_port
         
         if not motor_port:
             raise ValueError("motor_port must be specified in constructor or config file")
         
-        self._use_separate_param_port = bool(param_port)
-        
-        # Create Waveshare wrapper for motor port (TX)
-        print(f"Initializing Waveshare motor port: {motor_port}")
+        # Create Waveshare wrapper
+        print(f"Initializing Waveshare port: {motor_port}")
         self._motor_serial = WaveshareCANWrapper(motor_port)
         self._motor_serial.open()
         
-        # Create Waveshare wrapper for param port (RX) if specified
-        self._param_serial = None
-        if self._use_separate_param_port:
-            print(f"Initializing Waveshare param port: {param_port}")
-            self._param_serial = WaveshareCANWrapper(param_port)
-            self._param_serial.open()
-        else:
-            # Use same port for both TX and RX
-            self._param_serial = self._motor_serial
-            
-        # Create low-level controller wrappers
-        # Note: We use a simple controller wrapper instead of the complex Native LowLevelCANController
+        # Create controller wrapper
         self._ctrl = self._create_controller(self._motor_serial)
-        self._param_ctrl = self._create_controller(self._param_serial) if self._use_separate_param_port else self._ctrl
         
         # Create and register motors
         self._motors = []
@@ -345,9 +328,6 @@ class CANMotorController:
             )
             self._motors.append(motor)
             self._ctrl.add_motor(motor)
-            # Also register with param controller if separate (same motor object so state is shared)
-            if self._use_separate_param_port and self._param_ctrl:
-                self._param_ctrl.add_motor(motor)
         
         # Control state
         self._control_mode = control_mode  # "servo" or "ptm"
@@ -378,12 +358,7 @@ class CANMotorController:
             exit()
         signal.signal(signal.SIGINT, signal_handler)
         
-        if self._use_separate_param_port:
-            print(f"CANMotorController initialized with {self.num_dof} motors")
-            print(f"  └── Motor port (TX): {motor_port}")
-            print(f"  └── Param port (RX): {param_port}")
-        else:
-            print(f"CANMotorController initialized with {self.num_dof} motors on {motor_port}")
+        print(f"✓ CANMotorController initialized with {self.num_dof} motors on {motor_port}")
     
     def _create_controller(self, device):
         """Create a simple controller wrapper for Waveshare device."""
@@ -542,13 +517,6 @@ class CANMotorController:
         
         # Motor port (required)
         self.config_motor_port = config.get("motor_port", None)
-        
-        # Param port for reading motor parameters (optional)
-        param_port_val = config.get("param_port", None)
-        if param_port_val in (None, "", "null", "None"):
-            self.config_param_port = None
-        else:
-            self.config_param_port = param_port_val
         
         # Motor IDs
         self.motor_ids = config.get("motor_ids", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
@@ -754,14 +722,8 @@ class CANMotorController:
         self._control_thread = threading.Thread(target=self._control_loop, daemon=True)
         self._control_thread.start()
         
-        # Start param polling thread for feedback (Waveshare uses polling, not async CAN RX)
-        if self._use_separate_param_port and self._param_ctrl:
-            self._param_poll_thread = threading.Thread(target=self._param_poll_loop, daemon=True)
-            self._param_poll_thread.start()
-            print("✓ Parameter polling thread started")
-        
         sleep(0.1)
-        print("Motor control started")
+        print("✓ Motor control started")
     
     def set_zero_position(self, motor_indices=None):
         """
@@ -826,21 +788,13 @@ class CANMotorController:
         for motor in self._motors:
             self._ctrl.reset_mode(motor)
         
-        # Close Waveshare ports
+        # Close Waveshare port
         try:
             if self._motor_serial:
                 self._motor_serial.close()
-                print("Motor port closed")
+                print("✓ Waveshare port closed")
         except Exception as e:
-            print(f"Error closing motor port: {e}")
-        
-        # Close param port if separate
-        if self._use_separate_param_port and self._param_serial:
-            try:
-                self._param_serial.close()
-                print("Param port closed")
-            except Exception as e:
-                print(f"Error closing param port: {e}")
+            print(f"Error closing port: {e}")
         
         print("Motor control stopped")
     

@@ -1,8 +1,9 @@
 # Waveshare USB-CAN-A Configuration for Biped Controller
 
-# Waveshare Serial Ports (Windows)
-motor_port: "COM13"        # Main control port (TX)
-param_port: "COM18"        # Parameter read port (RX - optional)
+# Waveshare Serial Port
+# Windows: "COM13", "COM18", etc.
+# Linux: "/dev/ttyUSB0", "/dev/ttyUSB1", etc.
+motor_port: "COM13"
 
 # Motor ID mapping (array index 0-9 to CAN motor ID)
 # Index 0-4: Left leg (hip pitch, hip roll, hip yaw, knee, ankle)
