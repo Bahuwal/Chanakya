@@ -143,7 +143,11 @@ class DataReceiver:
         """
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        
+        # SO_REUSEPORT is Linux/Mac only, not available on Windows
+        if hasattr(socket, 'SO_REUSEPORT'):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        
         ip_address = ""
         if broadcast:
             ip_address = '<broadcast>'
