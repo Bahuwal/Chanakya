@@ -779,7 +779,7 @@ class CANMotorController:
         """Background thread for sending control commands.
         
         CRITICAL: Motorevo servos require continuous command stream to maintain position!
-        If commands stop, motors idle and internal gears may oscillate then stop.
+        Motors have 100ms watchdog - if no commands received, they exit motor mode!
         """
         while not self._stop_event.is_set():
             # Apply ankle coupling if enabled
@@ -791,56 +791,29 @@ class CANMotorController:
             # Add position offset
             target_motor_pos = target_motor_pos + self._motor_pos_offset
             
-            # Send commands to ALL motors CONTINUOUSLY (matches working code behavior)
+            # ALWAYS send commands to ALL motors (prevent watchdog timeout!)
             for i, motor in enumerate(self._motors):
-                if self._use_position_pd and self._torque_multiplier[i] > 0.5:
-                    # Active position control - use selected control mode
-                    if self._control_mode == "servo":
-                        # Servo mode: inner-loop PID
-                        self._ctrl.servo_control(
-                            motor,
-                            pos=target_motor_pos[i],
-                            vel=self._vel[i],
-                            kp=self._kp[i],
-                            kd=self._kd[i],
-                            ikp=self._ikp[i],
-                            ikd=self._ikd[i],
-                            iki=self._iki[i]
-                        )
-                    elif self._control_mode == "ptm":
-                        # PTM mode: feed-forward torque
-                        self._ctrl.ptm_control(
-                            motor,
-                            pos=target_motor_pos[i],
-                            vel=self._vel[i],
-                            kp=self._kp[i],
-                            kd=self._kd[i],
-                            torque=self._target_torque[i]
-                        )
-                else:
-                    # Motor disabled or not in PD mode - send target position with zero gains
-                    # This prevents motors from holding random initial positions
-                    if self._control_mode == "servo":
-                        self._ctrl.servo_control(
-                            motor,
-                            pos=target_motor_pos[i],  # Use target position, not current
-                            vel=0,
-                            kp=0,
-                            kd=0,
-                            ikp=0,
-                            ikd=0,
-                            iki=0
-                        )
-                    elif self._control_mode == "ptm":
-                        self._ctrl.ptm_control(
-                            motor,
-                            pos=target_motor_pos[i],  # Use target position, not current
-                            vel=0,
-                            kp=0,
-                            kd=0,
-                            torque=0
-                        )
-                sleep(0.001)  # Small delay between motors (matches working code)
+                if self._control_mode == "servo":
+                    self._ctrl.servo_control(
+                        motor,
+                        pos=target_motor_pos[i],
+                        vel=self._vel[i] if self._use_position_pd else 0,
+                        kp=self._kp[i] if self._use_position_pd else 0,
+                        kd=self._kd[i] if self._use_position_pd else 0,
+                        ikp=self._ikp[i] if self._use_position_pd else 0,
+                        ikd=self._ikd[i] if self._use_position_pd else 0,
+                        iki=self._iki[i] if self._use_position_pd else 0
+                    )
+                elif self._control_mode == "ptm":
+                    self._ctrl.ptm_control(
+                        motor,
+                        pos=target_motor_pos[i],
+                        vel=self._vel[i] if self._use_position_pd else 0,
+                        kp=self._kp[i] if self._use_position_pd else 0,
+                        kd=self._kd[i] if self._use_position_pd else 0,
+                        torque=self._target_torque[i] if self._use_position_pd else 0
+                    )
+                sleep(0.001)  # Small delay between motors
             
             # Increment loop counter for timing/decimation tracking
             self.loop_counter += 1
