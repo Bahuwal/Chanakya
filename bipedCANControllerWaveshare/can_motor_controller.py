@@ -681,60 +681,19 @@ class CANMotorController:
         # Enable motor mode for all motors
         for motor in self._motors:
             self._ctrl.motor_mode(motor)
-        
-        # Poll to get initial positions
-        for _ in range(30):
-            try:
-                self._ctrl.poll()
-            except Exception:
-                pass
-            sleep(0.005)
-        
-        # Send hold commands to keep motors alive during initialization
-        # CRITICAL: Without these, motors timeout during 1-second initialization!
-        for _ in range(10):
-            for motor in self._motors:
-                self._ctrl.ptm_control(
-                    motor,
-                    pos=motor.pos,
-                    vel=0.0,
-                    kp=0.0,
-                    kd=0.0,
-                    torque=0.0
-                )
-            sleep(0.005)
-        
-        # Poll again
-        for _ in range(20):
-            try:
-                self._ctrl.poll()
-            except Exception:
-                pass
-            sleep(0.005)
+        sleep(0.05)  # 50ms < 100ms watchdog ✓
         
         # Zero all motors (set current position as reference zero)
         for motor in self._motors:
             self._ctrl.set_zero_position(motor)
-        sleep(0.5)
+        sleep(0.05)  # 50ms < 100ms watchdog ✓
         
-        # Poll to confirm zeroing
-        for _ in range(10):
-            try:
-                self._ctrl.poll()
-            except Exception:
-                pass
-            sleep(0.005)
-        
-        # Set position offsets
-        for i, motor in enumerate(self._motors):
-            self._motor_pos_offset[i] = motor.pos
+        # Set position offsets to zero
+        self._motor_pos_offset = np.zeros(self.num_dof)
         
         # Start polling thread
         self._poll_thread = threading.Thread(target=self._poll_loop, daemon=True)
         self._poll_thread.start()
-        
-        # Wait for stability
-        sleep(0.3)
         
         # Start control thread
         self._control_thread = threading.Thread(target=self._control_loop, daemon=True)
@@ -820,7 +779,7 @@ class CANMotorController:
         """Background thread for sending control commands.
         
         CRITICAL: Motorevo servos require continuous command stream to maintain position!
-        Motors have 100ms watchdog - if no commands received, they exit motor mode!
+        If commands stop, motors idle and internal gears may oscillate then stop.
         """
         while not self._stop_event.is_set():
             # Apply ankle coupling if enabled
@@ -832,29 +791,56 @@ class CANMotorController:
             # Add position offset
             target_motor_pos = target_motor_pos + self._motor_pos_offset
             
-            # ALWAYS send commands to ALL motors (prevent watchdog timeout!)
+            # Send commands to ALL motors CONTINUOUSLY (matches working code behavior)
             for i, motor in enumerate(self._motors):
-                if self._control_mode == "servo":
-                    self._ctrl.servo_control(
-                        motor,
-                        pos=target_motor_pos[i],
-                        vel=self._vel[i] if self._use_position_pd else 0,
-                        kp=self._kp[i] if self._use_position_pd else 0,
-                        kd=self._kd[i] if self._use_position_pd else 0,
-                        ikp=self._ikp[i] if self._use_position_pd else 0,
-                        ikd=self._ikd[i] if self._use_position_pd else 0,
-                        iki=self._iki[i] if self._use_position_pd else 0
-                    )
-                elif self._control_mode == "ptm":
-                    self._ctrl.ptm_control(
-                        motor,
-                        pos=target_motor_pos[i],
-                        vel=self._vel[i] if self._use_position_pd else 0,
-                        kp=self._kp[i] if self._use_position_pd else 0,
-                        kd=self._kd[i] if self._use_position_pd else 0,
-                        torque=self._target_torque[i] if self._use_position_pd else 0
-                    )
-                sleep(0.001)  # Small delay between motors
+                if self._use_position_pd and self._torque_multiplier[i] > 0.5:
+                    # Active position control - use selected control mode
+                    if self._control_mode == "servo":
+                        # Servo mode: inner-loop PID
+                        self._ctrl.servo_control(
+                            motor,
+                            pos=target_motor_pos[i],
+                            vel=self._vel[i],
+                            kp=self._kp[i],
+                            kd=self._kd[i],
+                            ikp=self._ikp[i],
+                            ikd=self._ikd[i],
+                            iki=self._iki[i]
+                        )
+                    elif self._control_mode == "ptm":
+                        # PTM mode: feed-forward torque
+                        self._ctrl.ptm_control(
+                            motor,
+                            pos=target_motor_pos[i],
+                            vel=self._vel[i],
+                            kp=self._kp[i],
+                            kd=self._kd[i],
+                            torque=self._target_torque[i]
+                        )
+                else:
+                    # Motor disabled or not in PD mode - send target position with zero gains
+                    # This prevents motors from holding random initial positions
+                    if self._control_mode == "servo":
+                        self._ctrl.servo_control(
+                            motor,
+                            pos=target_motor_pos[i],  # Use target position, not current
+                            vel=0,
+                            kp=0,
+                            kd=0,
+                            ikp=0,
+                            ikd=0,
+                            iki=0
+                        )
+                    elif self._control_mode == "ptm":
+                        self._ctrl.ptm_control(
+                            motor,
+                            pos=target_motor_pos[i],  # Use target position, not current
+                            vel=0,
+                            kp=0,
+                            kd=0,
+                            torque=0
+                        )
+                sleep(0.001)  # Small delay between motors (matches working code)
             
             # Increment loop counter for timing/decimation tracking
             self.loop_counter += 1
