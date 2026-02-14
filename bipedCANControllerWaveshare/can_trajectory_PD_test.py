@@ -86,8 +86,8 @@ def main():
     
     # Setup UDP receiver for commands
     receiver = DataReceiver(port=9871, decoding="msgpack", broadcast=True)
-    receiver.receive_continuously()
-    received_id = 0
+    # receiver.receive_continuously() # This is no longer needed as we poll inside the loop
+    # received_id = 0 # This is no longer needed
     
     t = time.time()
     
@@ -106,12 +106,16 @@ def main():
                 # Handle motor reset command (from 'q' key)
                 if udp_data.get("reset_motors", False):
                     print("\n" + "="*60)
-                    print("🛑 RESET COMMAND RECEIVED - Switching motors to reset mode...")
+                    print("🔄 RESET COMMAND - Switching all motors to reset mode...")
                     print("="*60)
-                    motor.stop()  # This calls reset_mode() on all motors
-                    print("✓ Motors reset to idle mode")
-                    print("✓ Control loop stopped")
-                    break
+                    
+                    # Call reset_mode on all motors directly
+                    for motor_obj in motor._motors:
+                        motor._ctrl.reset_mode(motor_obj)
+                    
+                    print("✓ All motors switched to reset mode (idle)")
+                    print("✓ Press keys to resume control\n")
+                    # Don't break - keep running and listening
                 
                 # Update should_publish state
                 if "should_publish" in udp_data:

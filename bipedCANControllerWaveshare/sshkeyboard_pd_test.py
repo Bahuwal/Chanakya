@@ -357,28 +357,13 @@ def joint_monkey(key):
 
 def press(key):
 
-    # Handle quit command - 'q' to reset motors and exit
+    # Handle motor reset command - 'q' to reset all motors
     if key == 'q':
-        print("\n" + "="*60)
-        print("🛑 QUIT COMMAND RECEIVED - Resetting motors...")
-        print("="*60)
-        
-        # Send reset command to motors via UDP
-        for _ in range(20):  # Send multiple times to ensure delivery
-            data = {
-                "reset_motors": True,
-                "should_publish": False
-            }
-            publish(data)
-            time.sleep(0.01)
-        
-        print("✓ Motor reset commands sent")
-        print("Exiting in 1 second...")
-        time.sleep(1)
-        
-        # Exit the program
-        import os
-        os._exit(0)
+        print("🔄 Sending RESET command to all motors...")
+        data = {"reset_motors": True}
+        publish(data)
+        print("✓ Reset command sent")
+        return  # Don't process other handlers, but keep keyboard running
     
     # indvidual_motor_test_passive(key)
 
