@@ -724,10 +724,12 @@ class CANMotorController:
         
         # CRITICAL: Zero all motors BEFORE starting control threads
         # This matches the working ptm_waveshare_yaml.py sequence
+        print("TEST01 - Before zeroing motor positions")
         print("Zeroing motor positions (set current as reference zero)...")
         for motor in self._motors:
             self._ctrl.set_zero_position(motor)
         sleep(0.5)  # Wait for zero commands to process
+        print("TEST02 - After zeroing motor positions")
         
         # Poll again to confirm zeroing
         for _ in range(10):
