@@ -709,8 +709,8 @@ class CANMotorController:
                 )
             sleep(0.005)
         
-        # Poll for initial motor feedback
-        for _ in range(20):  # Poll for ~100ms to read initial parameters
+        # Poll for initial motor feedback (after holding commands)
+        for _ in range(20):  # Poll for ~100ms to read more parameters
             try:
                 self._ctrl.poll()
             except Exception:
@@ -722,11 +722,27 @@ class CANMotorController:
         print(f"DEBUG: Motor positions after polling: {[f'{p:.2f}' for p in motor_positions]}")
         print(f"DEBUG: Motor IDs: {[motor.id for motor in self._motors]}")
         
+        # CRITICAL: Zero all motors BEFORE starting control threads
+        # This matches the working ptm_waveshare_yaml.py sequence
+        print("Zeroing motor positions (set current as reference zero)...")
+        for motor in self._motors:
+            self._ctrl.set_zero_position(motor)
+        sleep(0.5)  # Wait for zero commands to process
+        
+        # Poll again to confirm zeroing
+        for _ in range(10):
+            try:
+                self._ctrl.poll()
+            except Exception:
+                pass
+            sleep(0.005)
+        
         # Set current motor positions as reference zero to prevent jump starts
-        # motor_pos_offset makes the current physical position act as "zero" for control
+        # After zeroing, these should all be near zero
         for i, motor in enumerate(self._motors):
             self._motor_pos_offset[i] = motor.pos
-        print(f"✓ Current motor positions set as reference zero: {[f'{p:.2f}' for p in self._motor_pos_offset]}")
+        print(f"✓ Motor positions after zeroing: {[f'{motor.pos:.2f}' for motor in self._motors]}")
+        print(f"✓ Position offsets set to: {[f'{p:.2f}' for p in self._motor_pos_offset]}")
         
         # CRITICAL: Start polling thread FIRST before control thread
         # This ensures motor positions are continuously updated before control starts sending commands
