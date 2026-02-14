@@ -695,24 +695,6 @@ class CANMotorController:
         print(f"DEBUG: Motor positions after polling: {[f'{p:.2f}' for p in motor_positions]}")
         print(f"DEBUG: Motor IDs: {[motor.id for motor in self._motors]}")
         
-        # CRITICAL: Zero all motors to reset encoder positions
-        # This prevents motors from holding old positions from previous shutdown
-        print("Resetting motor encoder positions to zero...")
-        for motor in self._motors:
-            self._ctrl.set_zero_position(motor)
-            sleep(0.005)  # Small delay between motors
-        
-        # Wait for zero commands to take effect
-        sleep(0.1)
-        
-        # Poll again to get updated positions (should all be near zero now)
-        for _ in range(10):
-            try:
-                self._ctrl.poll()
-            except Exception:
-                pass
-            sleep(0.005)
-        
         # Set current motor positions as reference zero to prevent jump starts
         # motor_pos_offset makes the current physical position act as "zero" for control
         for i, motor in enumerate(self._motors):
