@@ -681,19 +681,60 @@ class CANMotorController:
         # Enable motor mode for all motors
         for motor in self._motors:
             self._ctrl.motor_mode(motor)
-        sleep(0.5)
+        
+        # Poll to get initial positions
+        for _ in range(30):
+            try:
+                self._ctrl.poll()
+            except Exception:
+                pass
+            sleep(0.005)
+        
+        # Send hold commands to keep motors alive during initialization
+        # CRITICAL: Without these, motors timeout during 1-second initialization!
+        for _ in range(10):
+            for motor in self._motors:
+                self._ctrl.ptm_control(
+                    motor,
+                    pos=motor.pos,
+                    vel=0.0,
+                    kp=0.0,
+                    kd=0.0,
+                    torque=0.0
+                )
+            sleep(0.005)
+        
+        # Poll again
+        for _ in range(20):
+            try:
+                self._ctrl.poll()
+            except Exception:
+                pass
+            sleep(0.005)
         
         # Zero all motors (set current position as reference zero)
         for motor in self._motors:
             self._ctrl.set_zero_position(motor)
         sleep(0.5)
         
-        # Set position offsets to zero
-        self._motor_pos_offset = np.zeros(self.num_dof)
+        # Poll to confirm zeroing
+        for _ in range(10):
+            try:
+                self._ctrl.poll()
+            except Exception:
+                pass
+            sleep(0.005)
+        
+        # Set position offsets
+        for i, motor in enumerate(self._motors):
+            self._motor_pos_offset[i] = motor.pos
         
         # Start polling thread
         self._poll_thread = threading.Thread(target=self._poll_loop, daemon=True)
         self._poll_thread.start()
+        
+        # Wait for stability
+        sleep(0.3)
         
         # Start control thread
         self._control_thread = threading.Thread(target=self._control_loop, daemon=True)
