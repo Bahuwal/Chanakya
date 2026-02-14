@@ -100,26 +100,45 @@ def main():
     
     try:
         for i in range(1000000):
-            # Check for new commands from UDP
-            if receiver.data is not None:
-                if receiver.data_id != received_id:
-                    received_id = receiver.data_id
-                    
-                    if "dof_pos_target" in receiver.data:
-                        dof_pos_target = np.array(receiver.data["dof_pos_target"])
-                        print(f"[CMD] Target position: {dof_pos_target}")
-                        
-                    if "action_is_on" in receiver.data:
-                        action_is_on = np.array(receiver.data["action_is_on"], dtype=np.float64)
-                        
-                    if "should_publish" in receiver.data:
-                        should_publish = receiver.data["should_publish"]
-                        
-                    if "kp" in receiver.data:
-                        motor.kp = np.array(receiver.data["kp"], dtype=np.float64)
-                        
-                    if "kd" in receiver.data:
-                        motor.kd = np.array(receiver.data["kd"], dtype=np.float64)
+            # Receive UDP commands
+            udp_data, _ = receiver.receive(timeout=0.001)
+            if udp_data:
+                # Handle motor reset command (from 'q' key)
+                if udp_data.get("reset_motors", False):
+                    print("\n" + "="*60)
+                    print("🛑 RESET COMMAND RECEIVED - Switching motors to reset mode...")
+                    print("="*60)
+                    motor.stop()  # This calls reset_mode() on all motors
+                    print("✓ Motors reset to idle mode")
+                    print("✓ Control loop stopped")
+                    break
+                
+                # Update should_publish state
+                if "should_publish" in udp_data:
+                    should_publish = udp_data["should_publish"]
+                    if should_publish:
+                        print("📤 Publishing ENABLED")
+                    else:
+                        print("📴 Publishing DISABLED")
+                
+                # Update target position
+                if "dof_pos_target" in udp_data:
+                    dof_pos_target = np.array(udp_data["dof_pos_target"])
+                    print(f"[CMD] Target position: {dof_pos_target.round(2)}")
+                
+                # Update action_is_on
+                if "action_is_on" in udp_data:
+                    action_is_on = np.array(udp_data["action_is_on"], dtype=np.float64)
+
+                # Update kp gains
+                if "kp" in udp_data:
+                    motor.kp = np.array(udp_data["kp"], dtype=np.float64)
+                    print(f"[CMD] kp: {motor.kp.round(2)}")
+                
+                # Update kd gains
+                if "kd" in udp_data:
+                    motor.kd = np.array(udp_data["kd"], dtype=np.float64)
+                    print(f"[CMD] kd: {motor.kd.round(2)}")
             
             # Control loop with decimation
             for _ in range(decimation):

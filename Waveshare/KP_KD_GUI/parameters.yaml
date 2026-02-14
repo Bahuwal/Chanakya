@@ -18,3 +18,6 @@ kd: 0.8                    # Position damping (0-50)
 
 # Test Duration
 control_duration: 8        # seconds
+
+
+
