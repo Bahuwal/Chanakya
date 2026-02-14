@@ -682,56 +682,41 @@ class CANMotorController:
         for motor in self._motors:
             self._ctrl.motor_mode(motor)
         
-        # CRITICAL FIRST STEP: Poll to get initial positions immediately after motor_mode
-        # We need to know where motors actually are before sending ANY commands
-        print("Reading initial motor positions...")
-        for _ in range(30):  # Poll aggressively for 150ms
+        # Poll to get initial positions
+        for _ in range(30):
             try:
                 self._ctrl.poll()
             except Exception:
                 pass
             sleep(0.005)
         
-        # NOW send hold commands using ACTUAL current positions (not zero!)
-        # This is critical - we must command motors to their CURRENT position, not 0.0
-        print("Holding motors at current position during initialization...")
-        for _ in range(10):  # Send 10 hold commands over 50ms
+        # Hold motors at current position during initialization
+        for _ in range(10):
             for motor in self._motors:
-                # Send PTM command with CURRENT position and zero gains
-                current_pos = motor.pos  # Use actual current position!
                 self._ctrl.ptm_control(
                     motor,
-                    pos=current_pos,  # NOT 0.0 - use where motor actually is!
+                    pos=motor.pos,
                     vel=0.0,
-                    kp=0.0,     # ZERO gain - just hold current position
-                    kd=0.0,     # ZERO gain  
-                    torque=0.0  # ZERO torque
+                    kp=0.0,
+                    kd=0.0,
+                    torque=0.0
                 )
             sleep(0.005)
         
-        # Poll for initial motor feedback (after holding commands)
-        for _ in range(20):  # Poll for ~100ms to read more parameters
+        # Poll again
+        for _ in range(20):
             try:
                 self._ctrl.poll()
             except Exception:
                 pass
             sleep(0.005)
         
-        # Debug: Print motor positions before setting offsets
-        motor_positions = [motor.pos for motor in self._motors]
-        print(f"DEBUG: Motor positions after polling: {[f'{p:.2f}' for p in motor_positions]}")
-        print(f"DEBUG: Motor IDs: {[motor.id for motor in self._motors]}")
-        
-        # CRITICAL: Zero all motors BEFORE starting control threads
-        # This matches the working ptm_waveshare_yaml.py sequence
-        print("TEST01 - Before zeroing motor positions")
-        print("Zeroing motor positions (set current as reference zero)...")
+        # Zero all motors
         for motor in self._motors:
             self._ctrl.set_zero_position(motor)
-        sleep(0.5)  # Wait for zero commands to process
-        print("TEST02 - After zeroing motor positions")
+        sleep(0.5)
         
-        # Poll again to confirm zeroing
+        # Poll to confirm zeroing
         for _ in range(10):
             try:
                 self._ctrl.poll()
@@ -739,23 +724,18 @@ class CANMotorController:
                 pass
             sleep(0.005)
         
-        # Set current motor positions as reference zero to prevent jump starts
-        # After zeroing, these should all be near zero
+        # Set position offsets
         for i, motor in enumerate(self._motors):
             self._motor_pos_offset[i] = motor.pos
-        print(f"✓ Motor positions after zeroing: {[f'{motor.pos:.2f}' for motor in self._motors]}")
-        print(f"✓ Position offsets set to: {[f'{p:.2f}' for p in self._motor_pos_offset]}")
         
-        # CRITICAL: Start polling thread FIRST before control thread
-        # This ensures motor positions are continuously updated before control starts sending commands
+        # Start polling thread
         self._poll_thread = threading.Thread(target=self._poll_loop, daemon=True)
         self._poll_thread.start()
-        print("✓ Feedback polling started")
         
-        # Wait for positions to stabilize with continuous polling
+        # Wait for stability
         sleep(0.3)
         
-        # NOW start control thread (offsets are set, positions are stable, feedback is updating)
+        # Start control thread
         self._control_thread = threading.Thread(target=self._control_loop, daemon=True)
         self._control_thread.start()
         
