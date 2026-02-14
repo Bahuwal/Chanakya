@@ -718,14 +718,18 @@ class CANMotorController:
             self._motor_pos_offset[i] = motor.pos
         print(f"✓ Current motor positions set as reference zero: {[f'{p:.2f}' for p in self._motor_pos_offset]}")
         
-        # Start control thread (sends commands via Waveshare)
-        self._control_thread = threading.Thread(target=self._control_loop, daemon=True)
-        self._control_thread.start()
-        
-        # Start polling thread - continuously poll feedback from Waveshare port
-        # This is CRITICAL: without continuous polling, motor positions don't update!
+        # CRITICAL: Start polling thread FIRST before control thread
+        # This ensures motor positions are continuously updated before control starts sending commands
         self._poll_thread = threading.Thread(target=self._poll_loop, daemon=True)
         self._poll_thread.start()
+        print("✓ Feedback polling started")
+        
+        # Wait for positions to stabilize with continuous polling
+        sleep(0.3)
+        
+        # NOW start control thread (offsets are set, positions are stable, feedback is updating)
+        self._control_thread = threading.Thread(target=self._control_loop, daemon=True)
+        self._control_thread.start()
         
         sleep(0.1)
         print("✓ Motor control started")
