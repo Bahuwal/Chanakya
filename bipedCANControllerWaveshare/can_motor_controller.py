@@ -682,6 +682,23 @@ class CANMotorController:
         for motor in self._motors:
             self._ctrl.motor_mode(motor)
         
+        # CRITICAL: Send zero-gain commands immediately to prevent drift
+        # Motors need continuous commands or they may drift/oscillate
+        # We don't know their position yet, so send zero gains to hold current position
+        print("Holding motors at current position during initialization...")
+        for _ in range(10):  # Send 10 hold commands over 50ms
+            for motor in self._motors:
+                # Send PTM command with zero gains - tells motor to stay put
+                self._ctrl.ptm_control(
+                    motor,
+                    pos=0.0,    # Position doesn't matter with zero gains
+                    vel=0.0,
+                    kp=0.0,     # ZERO gain
+                    kd=0.0,     # ZERO gain  
+                    torque=0.0  # ZERO torque
+                )
+            sleep(0.005)
+        
         # Poll for initial motor feedback
         for _ in range(20):  # Poll for ~100ms to read initial parameters
             try:
