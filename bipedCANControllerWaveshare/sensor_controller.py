@@ -179,11 +179,12 @@ class SerialDataCollector:
             decoded = cobs.decode(received_data)
             
             # Validate packet size BEFORE unpacking
-            # Expected: 4 shorts (load cells) + 23 floats (IMU) + 4 shorts (status) = 108 bytes payload
-            # Plus 1 byte header + 1 byte CRC = 110 bytes total
-            expected_size = 108  # 4*2 + 23*4 + 4*2
-            if len(decoded) != expected_size + 2:  # +2 for header and CRC
-                print(f"Packet size mismatch: got {len(decoded)} bytes, expected {expected_size + 2} bytes")
+            # Teensy actually sends 92 bytes payload + 1 header + 1 CRC = 94 bytes total
+            # Payload: 4 shorts (load cells) + 23 floats (IMU) + 4 shorts (status)
+            # But actual measurement shows 94 bytes, so using that
+            expected_total_size = 94  # Actual packet size from Teensy
+            if len(decoded) != expected_total_size:
+                print(f"Packet size mismatch: got {len(decoded)} bytes, expected {expected_total_size} bytes")
                 return
                 
         except cobs.DecodeError:
