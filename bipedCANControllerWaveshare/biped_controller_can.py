@@ -491,7 +491,7 @@ class BipedController:
 
     def shutdown(self):
         # Ensure motors and sensors are properly stopped
-        self.motor.set_should_terminate(True)
+        self.motor.stop()
         self.sensors.stop()
         self.data_receiver.stop()
         print("BipedController has been shut down cleanly.")

@@ -681,12 +681,12 @@ class CANMotorController:
         # Enable motor mode for all motors
         for motor in self._motors:
             self._ctrl.motor_mode(motor)
-        sleep(0.05)  # 50ms < 100ms watchdog ✓
+        sleep(0.09)  
         
         # Zero all motors (set current position as reference zero)
         for motor in self._motors:
             self._ctrl.set_zero_position(motor)
-        sleep(0.05)  # 50ms < 100ms watchdog ✓
+        sleep(0.09)  
         
         # Set position offsets to zero
         self._motor_pos_offset = np.zeros(self.num_dof)

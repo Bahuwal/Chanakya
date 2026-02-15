@@ -149,7 +149,11 @@ class SerialDataCollector:
                 self.queue.put(None)
                 return
             
+        # FIX #3: Add timeout protection with max byte limit
         received_data = bytearray()
+        max_bytes = 200  # Safety limit to prevent infinite loops
+        byte_count = 0
+        
         while True:
             try:
                 byte = self.ser.read(1)  # Read a single byte
@@ -160,14 +164,32 @@ class SerialDataCollector:
             
             if byte == b'\x00':  # Check if it's the null byte
                 break
+            
             received_data += byte
+            byte_count += 1
+            
+            # Timeout protection: discard if packet is too large
+            if byte_count > max_bytes:
+                print(f"Packet too large ({byte_count} bytes), discarding")
+                self.ser.reset_input_buffer()  # Flush buffer
+                return
 
+        # FIX #1: Validate packet and decode COBS
         try:
             decoded = cobs.decode(received_data)
+            
+            # Validate packet size BEFORE unpacking
+            # Expected: 4 shorts (load cells) + 23 floats (IMU) + 4 shorts (status) = 108 bytes payload
+            # Plus 1 byte header + 1 byte CRC = 110 bytes total
+            expected_size = 108  # 4*2 + 23*4 + 4*2
+            if len(decoded) != expected_size + 2:  # +2 for header and CRC
+                print(f"Packet size mismatch: got {len(decoded)} bytes, expected {expected_size + 2} bytes")
+                return
+                
         except cobs.DecodeError:
-            print("bad COBS") 
-            # self.queue.put(None)
-            # print("CRC mismatch")
+            # FIX #2: Flush buffers on COBS error to prevent cascading failures
+            print("bad COBS")
+            self.ser.reset_input_buffer()  # Clear any partial data
             return
 
         try:
